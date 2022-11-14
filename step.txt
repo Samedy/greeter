@@ -1,0 +1,6 @@
+1. work on ballerin
+2. generate open api specification
+3. rename to Swagger.yaml
+4. replace the old definition in Definitions
+5. deploy balerine service
+6. update service host (production/uat)
