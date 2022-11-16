@@ -74,9 +74,9 @@ service /bakong/api/v1 on httpListener {
             accessToken: ""
         };
     }
-    resource function post 'unlink\-account(@http:Payload record {|string accNumber;|} req) returns record {|*http:Created; string? data;|} {
+    resource function post 'unlink\-account(@http:Payload record {|string accNumber;|} req) returns record {|*http:Created; string data;|} {
         return {
-            data: ()
+            data: ""
         };
     }
     resource function post 'account\-detail(@http:Payload record {|string accNumber;|} req) returns Account {
