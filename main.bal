@@ -115,10 +115,10 @@ service /bakong/api/v1 on httpListener {
             };
     }
     resource function post 'account\-transactions(@http:Payload record {|string accNumber;int page;int 'size;|} req) 
-    returns record {|*http:Created; Transaction[] transactions;int totalElement;|} {
+    returns record {|*http:Created; Transaction transactions;int totalElement;|} {
         return {
            "totalElement": 56,
-           "transactions": [
+           "transactions": 
                 {
                 "type": "CASA_TO_WALLET",
                 "sourceAcc": "xxxxxxxxx",
@@ -132,7 +132,7 @@ service /bakong/api/v1 on httpListener {
                 "transactionDate": 1624585517749,
                 "transactionHash": "xxxxxxxxx"
                 }
-           ]
+           
         };
     }
 }
