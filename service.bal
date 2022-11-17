@@ -29,7 +29,7 @@ service / on new http:Listener(9090) {
         };
     }
 
-    resource function post 'verify\-otp(@http:Payload record {|int otpCode;|} req) returns record {|RespondStatus status; record {|boolean isValid;|} data;|} {
+    resource function post 'verify\-otp(@http:Payload record {|int otpCode;|} req) returns record {|RespondStatus status; OtpRes data;|} {
         return {
             status: {
                 code: 0,
@@ -42,7 +42,7 @@ service / on new http:Listener(9090) {
         };
     }
 
-    resource function post 'finish\-link\-account(@http:Payload AccountReq req) returns record {|RespondStatus status; record {|boolean requireChangePassword;|} data;|} {
+    resource function post 'finish\-link\-account(@http:Payload AccountReq req) returns record {|RespondStatus status; FinishLinkAccountRes data;|} {
         return {
             status: {
                 code: 0,
@@ -67,14 +67,14 @@ service / on new http:Listener(9090) {
             }
         };
     }
-    resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|RespondStatus 'status; record{} data;|} {
+    resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|RespondStatus 'status; string data;|} {
         return {
             status: {
                 code: 0,
                 errorCode: null,
                 errorMessage: null
             },
-            data: {}
+            data: ""
         };
     }
     resource function post 'account\-detail(@http:Payload AccountReq req) returns record {|RespondStatus 'status; Account data;|} {

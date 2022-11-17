@@ -19,6 +19,10 @@ type InitLinkRes record {|
     int last3DigitsPhone;
 |};
 
+type OtpRes record {boolean isValid;};
+
+type FinishLinkAccountRes record {boolean requireChangePassword;};
+
 type AuthenticationReq record {|string login;string key;LoginType loginType;|};
 
 type AuthenticationRes record {|boolean requireChangePassword;string accessToken;|};
