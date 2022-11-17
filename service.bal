@@ -131,24 +131,30 @@ service / on new http:Listener(9090) {
                 }
             };
     }
-    resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|*http:Created; Transaction transactions;int totalElement;|} {
+    resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|RespondStatus 'status; AccountTransactionsRes data;|} {
         return {
-           "totalElement": 56,
-           "transactions": 
-                {
-                "type": "CASA_TO_WALLET",
-                "sourceAcc": "xxxxxxxxx",
-                "destinationAcc": "user@domain",
-                "amount": 10.0,
-                "ccy": "USD",
-                "desc": "Top up my wallet",
-                "status": "SUCCESS",
-                "cdtDbtInd": "D",
-                "transactionId": "xxxxxxxxx",
-                "transactionDate": 1624585517749,
-                "transactionHash": "xxxxxxxxx"
-                }
-           
+            status: {
+            code: 0,
+            errorCode: null,
+            errorMessage: null
+            },
+            data: {
+                totalElement: 56,
+                transactions: [
+                        {
+                        "type": "CASA_TO_WALLET",
+                        "sourceAcc": "xxxxxxxxx",
+                        "destinationAcc": "user@domain",
+                        "amount": 10.0,
+                        "ccy": "USD",
+                        "desc": "Top up my wallet",
+                        "status": "SUCCESS",
+                        "cdtDbtInd": "D",
+                        "transactionId": "xxxxxxxxx",
+                        "transactionDate": 1624585517749,
+                        "transactionHash": "xxxxxxxxx"
+                        }]
+            }
         };
     }
 }

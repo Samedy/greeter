@@ -27,9 +27,9 @@ type AuthenticationReq record {|string login;string key;LoginType loginType;|};
 
 type AuthenticationRes record {|boolean requireChangePassword;string accessToken;|};
 
-type TransferReq record {|string 'type;string sourceAcc;string destinationAcc;float amount;string ccy;string desc;|};
+type TransferReq record {|string 'type;string sourceAcc;string destinationAcc;decimal amount;string ccy;string desc;|};
 
-type TransferRes record {boolean requireOtp;string initRefNumber;float debitAmount;string debitCcy;float fee;};
+type TransferRes record {boolean requireOtp;string initRefNumber;decimal debitAmount;string debitCcy;decimal fee;};
 
 type ConfirmTransferReq record {|string initRefNumber;string otpCode;string 'key;|};
 
@@ -45,7 +45,7 @@ type Transaction record {
     string 'type;
     string sourceAcc;
     string destinationAcc;
-    float amount;
+    decimal amount;
     string ccy;
     string desc;
     string status;
@@ -55,9 +55,14 @@ type Transaction record {
     string transactionHash;
 };
 
+type AccountTransactionsRes record {
+    int totalElement;
+    Transaction[] transactions;
+};
+
 type Limit record{
-    float minTrxAmount;
-    float maxTrxAmount;
+    decimal minTrxAmount;
+    decimal maxTrxAmount;
 };
 
 type AccountReq record{
@@ -73,6 +78,6 @@ type Account record{
     string accStatus;
     string kycStatus;
     string country;
-    float balance;
+    decimal balance;
     Limit 'limit;
 };
