@@ -13,8 +13,13 @@ service / on new http:Listener(9090) {
         return "Hello " + name;
     }
 
-    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|*http:Created; InitLinkRes data;|} {
+    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|RespondStatus status; InitLinkRes data;|} {
         return {
+            status: {
+                code: 0,
+                errorCode: null,
+                errorMessage: null
+            },
             data:{
                 accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
                 requireOtp: false,
@@ -35,8 +40,13 @@ service / on new http:Listener(9090) {
             requireChangePassword: true
         };
     }
-    resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|*http:Created; AuthenticationRes data;|} {
+    resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|RespondStatus 'status; AuthenticationRes data;|} {
         return {
+            "status": {
+                "code": 0,
+                "errorCode": null,
+                "errorMessage": null
+            },
             data:{
                 requireChangePassword: true,
                 accessToken: ""

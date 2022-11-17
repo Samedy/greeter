@@ -1,4 +1,8 @@
-// import ballerina/http;
+type RespondStatus record{
+    int code;
+    string? errorCode;
+    string? errorMessage;
+};
 
 type InitLinkReq record {|
     LoginType loginType;
