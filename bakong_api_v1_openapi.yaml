@@ -1,0 +1,367 @@
+openapi: 3.0.1
+info:
+  title: Bakong Api V1
+  version: 0.1.0
+servers:
+- url: "{server}:{port}/bakong/api/v1"
+  variables:
+    server:
+      default: http://localhost
+    port:
+      default: "8080"
+paths:
+  /greeting:
+    get:
+      operationId: getGreeting
+      parameters:
+      - name: App-Name
+        in: header
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Ok
+          content:
+            text/plain:
+              schema:
+                type: string
+  /greeting/{name}:
+    get:
+      operationId: getGreetingName
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Ok
+          content:
+            text/plain:
+              schema:
+                type: string
+  /init-link-account:
+    post:
+      operationId: postInitLinkAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitLinkReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitLinkRes'
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {}
+  /verify-otp:
+    post:
+      operationId: postVerifyOtp
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {}
+  /finish-link-account:
+    post:
+      operationId: postFinishLinkAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountReq'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {}
+  /authenticate:
+    post:
+      operationId: postAuthenticate
+      responses:
+        "201":
+          description: Created
+          content:
+            text/plain:
+              schema: {}
+  /unlink-account:
+    post:
+      operationId: postUnlinkAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountReq'
+      responses:
+        "201":
+          description: Created
+          content:
+            text/plain:
+              schema: {}
+  /account-detail:
+    post:
+      operationId: postAccountDetail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+  /init-transaction:
+    post:
+      operationId: postInitTransaction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransferRes'
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {}
+  /finish-transaction:
+    post:
+      operationId: postFinishTransaction
+      responses:
+        "201":
+          description: Created
+          content:
+            text/plain:
+              schema: {}
+  /account-transactions:
+    post:
+      operationId: postAccountTransactions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    InitLinkReq:
+      required:
+      - bakongAccId
+      - key
+      - login
+      - loginType
+      - phoneNumber
+      type: object
+      properties:
+        loginType:
+          type: string
+          enum:
+          - USER_PWD
+          - PHONE_PIN
+        login:
+          type: string
+        key:
+          type: string
+        bakongAccId:
+          type: string
+        phoneNumber:
+          type: string
+    InitLinkRes:
+      required:
+      - accessToken
+      - last3DigitsPhone
+      - requireChangePhone
+      - requireOtp
+      type: object
+      properties:
+        accessToken:
+          type: string
+        requireOtp:
+          type: boolean
+        requireChangePhone:
+          type: boolean
+        last3DigitsPhone:
+          type: integer
+          format: int64
+    AccountReq:
+      required:
+      - accNumber
+      type: object
+      properties:
+        accNumber:
+          type: string
+    Limit:
+      required:
+      - maxTrxAmount
+      - minTrxAmount
+      type: object
+      properties:
+        minTrxAmount:
+          type: number
+          format: float
+        maxTrxAmount:
+          type: number
+          format: float
+    Account:
+      required:
+      - accCcy
+      - accName
+      - accNumber
+      - accPhone
+      - accStatus
+      - accType
+      - balance
+      - country
+      - kycStatus
+      - limit
+      type: object
+      properties:
+        accNumber:
+          type: string
+        accName:
+          type: string
+        accPhone:
+          type: string
+        accType:
+          type: string
+        accCcy:
+          type: string
+        accStatus:
+          type: string
+        kycStatus:
+          type: string
+        country:
+          type: string
+        balance:
+          type: number
+          format: float
+        limit:
+          $ref: '#/components/schemas/Limit'
+    TransferReq:
+      required:
+      - amount
+      - ccy
+      - desc
+      - destinationAcc
+      - sourceAcc
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+        sourceAcc:
+          type: string
+        destinationAcc:
+          type: string
+        amount:
+          type: number
+          format: float
+        ccy:
+          type: string
+        desc:
+          type: string
+    TransferRes:
+      required:
+      - debitAmount
+      - debitCcy
+      - fee
+      - initRefNumber
+      - requireOtp
+      type: object
+      properties:
+        requireOtp:
+          type: boolean
+        initRefNumber:
+          type: string
+        debitAmount:
+          type: number
+          format: float
+        debitCcy:
+          type: string
+        fee:
+          type: number
+          format: float
+    TransactionReq:
+      required:
+      - accNumber
+      - page
+      - size
+      type: object
+      properties:
+        accNumber:
+          type: string
+        page:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int64
+    Transaction:
+      required:
+      - amount
+      - ccy
+      - cdtDbtInd
+      - desc
+      - destinationAcc
+      - sourceAcc
+      - status
+      - transactionDate
+      - transactionHash
+      - transactionId
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+        sourceAcc:
+          type: string
+        destinationAcc:
+          type: string
+        amount:
+          type: number
+          format: float
+        ccy:
+          type: string
+        desc:
+          type: string
+        status:
+          type: string
+        cdtDbtInd:
+          type: string
+        transactionId:
+          type: string
+        transactionDate:
+          type: integer
+          format: int64
+        transactionHash:
+          type: string

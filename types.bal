@@ -15,9 +15,17 @@ type InitLinkRes record {|
     int last3DigitsPhone;
 |};
 
+type AuthenticationReq record {|string login;string key;LoginType loginType;|};
+
+type AuthenticationRes record {|boolean requireChangePassword;string accessToken;|};
+
 type TransferReq record {|string 'type;string sourceAcc;string destinationAcc;float amount;string ccy;string desc;|};
 
 type TransferRes record {boolean requireOtp;string initRefNumber;float debitAmount;string debitCcy;float fee;};
+
+type ConfirmTransferReq record {|string initRefNumber;string otpCode;string 'key;|};
+
+type ConfirmTransferRes record {|string transactionId;int transactionDate;string transactionHash;|};
 
 type TransactionReq record {
     string accNumber;

@@ -4,9 +4,9 @@ enum LoginType{
     PHONE_PIN, USER_PWD
 }
 
-listener http:Listener httpListener = new (8080);
+listener http:Listener httpListener = new (9090);
 
-service /bakong/api/v1 on httpListener {
+service / on httpListener {
     resource function get greeting(@http:Header {name: "App-Name"} string appName) returns string {
         return "Hello, World!";
     }
@@ -15,8 +15,7 @@ service /bakong/api/v1 on httpListener {
         return "Hello " + name;
     }
 
-    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) 
-    returns record {|*http:Created; InitLinkRes data;|} {
+    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|*http:Created; InitLinkRes data;|} {
         return {
             data:{
                 accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
@@ -38,10 +37,12 @@ service /bakong/api/v1 on httpListener {
             requireChangePassword: true
         };
     }
-    resource function post 'authenticate(@http:Payload record {|string login;string key;LoginType loginType;|} req) returns record {|*http:Created; boolean requireChangePassword;string accessToken;|} {
+    resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|*http:Created; AuthenticationRes data;|} {
         return {
-            requireChangePassword: true,
-            accessToken: ""
+            data:{
+                requireChangePassword: true,
+                accessToken: ""
+            }
         };
     }
     resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|*http:Created; string data;|} {
@@ -66,8 +67,7 @@ service /bakong/api/v1 on httpListener {
             }
         };
     }
-    resource function post 'init\-transaction(@http:Payload TransferReq req) 
-    returns record {|*http:Created; TransferRes data;|} {
+    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|*http:Created; TransferRes data;|} {
         return {
             data:{
                 "initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM",
@@ -78,12 +78,13 @@ service /bakong/api/v1 on httpListener {
             }
         };
     }
-    resource function post 'finish\-transaction(@http:Payload record {|string initRefNumber;string otpCode;string 'key;|} req) 
-    returns record {|*http:Created; string transactionId;int transactionDate;string transactionHash;|} {
+    resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|*http:Created; ConfirmTransferRes data;|} {
         return {
-            "transactionId": "xxxxxxxxx",
-            "transactionDate": 1624585517749,
-            "transactionHash": "xxxxxxxxx"
+            data:{
+                "transactionId": "xxxxxxxxx",
+                "transactionDate": 1624585517749,
+                "transactionHash": "xxxxxxxxx"
+                }
             };
     }
     resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|*http:Created; Transaction transactions;int totalElement;|} {
