@@ -1,40 +1,8 @@
 import ballerina/http;
 
-type Transaction record {
-    string 'type;
-    string sourceAcc;
-    string destinationAcc;
-    float amount;
-    string ccy;
-    string desc;
-    string status;
-    string cdtDbtInd;
-    string transactionId;
-    int transactionDate;
-    string transactionHash;
-};
-
 enum LoginType{
     PHONE_PIN, USER_PWD
 }
-
-type Limit record{
-    float minTrxAmount;
-    float maxTrxAmount;
-};
-
-type Account record{
-    string accNumber;
-    string accName;
-    string accPhone;
-    string accType;
-    string accCcy;
-    string accStatus;
-    string kycStatus;
-    string country;
-    float balance;
-    Limit 'limit;
-};
 
 listener http:Listener httpListener = new (8080);
 
@@ -47,13 +15,15 @@ service /bakong/api/v1 on httpListener {
         return "Hello " + name;
     }
 
-    resource function post 'init\-link\-account(@http:Payload record {|LoginType loginType;string login;string key;string bakongAccId;string phoneNumber;|} req) 
-    returns record {|*http:Created; string accessToken;boolean requireOtp;boolean requireChangePhone;int last3DigitsPhone;|} {
+    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) 
+    returns record {|*http:Created; InitLinkRes data;|} {
         return {
-            accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-            requireOtp: false,
-            requireChangePhone: true,
-            last3DigitsPhone: 123
+            data:{
+                accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+                requireOtp: false,
+                requireChangePhone: true,
+                last3DigitsPhone: 123
+            }
         };
     }
 
@@ -63,7 +33,7 @@ service /bakong/api/v1 on httpListener {
         };
     }
 
-    resource function post 'finish\-link\-account(@http:Payload record {|string accNumber;|} req) returns record {|*http:Created; boolean requireChangePassword;|} {
+    resource function post 'finish\-link\-account(@http:Payload AccountReq req) returns record {|*http:Created; boolean requireChangePassword;|} {
         return {
             requireChangePassword: true
         };
@@ -74,12 +44,12 @@ service /bakong/api/v1 on httpListener {
             accessToken: ""
         };
     }
-    resource function post 'unlink\-account(@http:Payload record {|string accNumber;|} req) returns record {|*http:Created; string data;|} {
+    resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|*http:Created; string data;|} {
         return {
             data: ""
         };
     }
-    resource function post 'account\-detail(@http:Payload record {|string accNumber;|} req) returns Account {
+    resource function post 'account\-detail(@http:Payload AccountReq req) returns Account {
         return {
             accNumber: "xxxxxxxxx",
             accName: "Jonh Smith",
@@ -96,14 +66,16 @@ service /bakong/api/v1 on httpListener {
             }
         };
     }
-    resource function post 'init\-transaction(@http:Payload record {|string 'type;string sourceAcc;string destinationAcc;float amount;string ccy;string desc;|} req) 
-    returns record {|*http:Created; boolean requireOtp;string initRefNumber;float debitAmount;string debitCcy;float fee;|} {
+    resource function post 'init\-transaction(@http:Payload TransferReq req) 
+    returns record {|*http:Created; TransferRes data;|} {
         return {
-            "initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM",
-            "debitAmount": 10.0,
-            "debitCcy": "USD",
-            "fee": 0,
-            "requireOtp": false
+            data:{
+                "initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM",
+                "debitAmount": 10.0,
+                "debitCcy": "USD",
+                "fee": 0,
+                "requireOtp": false
+            }
         };
     }
     resource function post 'finish\-transaction(@http:Payload record {|string initRefNumber;string otpCode;string 'key;|} req) 
@@ -114,8 +86,7 @@ service /bakong/api/v1 on httpListener {
             "transactionHash": "xxxxxxxxx"
             };
     }
-    resource function post 'account\-transactions(@http:Payload record {|string accNumber;int page;int 'size;|} req) 
-    returns record {|*http:Created; Transaction transactions;int totalElement;|} {
+    resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|*http:Created; Transaction transactions;int totalElement;|} {
         return {
            "totalElement": 56,
            "transactions": 
