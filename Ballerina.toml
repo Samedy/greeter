@@ -1,8 +1,8 @@
 [package]
-org = "ly_chetsamedy"
-name = "greeter"
+distribution = "2201.1.2"
+name = "testing"
+org = "samedytesting"
 version = "0.1.0"
-distribution = "2201.2.3"
 
 [build-options]
 observabilityIncluded = true

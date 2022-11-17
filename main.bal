@@ -4,9 +4,7 @@ enum LoginType{
     PHONE_PIN, USER_PWD
 }
 
-listener http:Listener httpListener = new (9090);
-
-service / on httpListener {
+service / on new http:Listener(9090) {
     resource function get greeting(@http:Header {name: "App-Name"} string appName) returns string {
         return "Hello, World!";
     }
