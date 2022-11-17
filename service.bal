@@ -29,15 +29,29 @@ service / on new http:Listener(9090) {
         };
     }
 
-    resource function post 'verify\-otp(@http:Payload record {|int otpCode;|} req) returns record {|*http:Created; boolean isValid;|} {
+    resource function post 'verify\-otp(@http:Payload record {|int otpCode;|} req) returns record {|RespondStatus status; record {|boolean isValid;|} data;|} {
         return {
-            isValid: true
+            status: {
+                code: 0,
+                errorCode: null,
+                errorMessage: null
+            },
+            data:{
+                isValid: true
+            }
         };
     }
 
-    resource function post 'finish\-link\-account(@http:Payload AccountReq req) returns record {|*http:Created; boolean requireChangePassword;|} {
+    resource function post 'finish\-link\-account(@http:Payload AccountReq req) returns record {|RespondStatus status; record {|boolean requireChangePassword;|} data;|} {
         return {
-            requireChangePassword: true
+            status: {
+                code: 0,
+                errorCode: null,
+                errorMessage: null
+            },
+            data:{
+                requireChangePassword: true
+            }
         };
     }
     resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|RespondStatus 'status; AuthenticationRes data;|} {
@@ -53,30 +67,47 @@ service / on new http:Listener(9090) {
             }
         };
     }
-    resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|*http:Created; string data;|} {
+    resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|RespondStatus 'status; record{} data;|} {
         return {
-            data: ""
+            status: {
+                code: 0,
+                errorCode: null,
+                errorMessage: null
+            },
+            data: {}
         };
     }
-    resource function post 'account\-detail(@http:Payload AccountReq req) returns Account {
+    resource function post 'account\-detail(@http:Payload AccountReq req) returns record {|RespondStatus 'status; Account data;|} {
         return {
-            accNumber: "xxxxxxxxx",
-            accName: "Jonh Smith",
-            accPhone: "012345678",
-            accType: "SAVINGS",
-            accCcy: "USD",
-            accStatus: "ACTIVE",
-            kycStatus: "FULL",
-            country: "KH",
-            balance: 1000.0,
-            'limit: {
-                minTrxAmount: 1.0,
-                maxTrxAmount: 100.0
+            status: {
+                "code": 0,
+                "errorCode": null,
+                "errorMessage": null
+            },
+            data:{
+                accNumber: "xxxxxxxxx",
+                accName: "Jonh Smith",
+                accPhone: "012345678",
+                accType: "SAVINGS",
+                accCcy: "USD",
+                accStatus: "ACTIVE",
+                kycStatus: "FULL",
+                country: "KH",
+                balance: 1000.0,
+                'limit: {
+                    minTrxAmount: 1.0,
+                    maxTrxAmount: 100.0
+                }
             }
         };
     }
-    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|*http:Created; TransferRes data;|} {
+    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes data;|} {
         return {
+            status: {
+                "code": 0,
+                "errorCode": null,
+                "errorMessage": null
+            },
             data:{
                 "initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM",
                 "debitAmount": 10.0,
@@ -86,8 +117,13 @@ service / on new http:Listener(9090) {
             }
         };
     }
-    resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|*http:Created; ConfirmTransferRes data;|} {
+    resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|RespondStatus 'status; ConfirmTransferRes data;|} {
         return {
+            status: {
+                "code": 0,
+                "errorCode": null,
+                "errorMessage": null
+            },
             data:{
                 "transactionId": "xxxxxxxxx",
                 "transactionDate": 1624585517749,
