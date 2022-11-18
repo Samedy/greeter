@@ -153,18 +153,7 @@ function postAccountTransactions() returns error? {
     json req = {"accNumber": "string",
   "page": 0,
   "size": 0};
-    http:Response response = check testClient->post("account-transactions",req);
-    test:assertEquals(response.statusCode, 201);
-    test:assertEquals(response.getJsonPayload(), {
-            status: {
-            code: 0,
-            errorCode: null,
-            errorMessage: null
-            },
-            data: {
-                totalElement: 56,
-                transactions: [
-                        {
+    json[] txn = [{
                         "type": "CASA_TO_WALLET",
                         "sourceAcc": "xxxxxxxxx",
                         "destinationAcc": "user@domain",
@@ -176,7 +165,18 @@ function postAccountTransactions() returns error? {
                         "transactionId": "xxxxxxxxx",
                         "transactionDate": 1624585517749,
                         "transactionHash": "xxxxxxxxx"
-                        }]
+                        }];
+    http:Response response = check testClient->post("account-transactions",req);
+    test:assertEquals(response.statusCode, 201);
+    test:assertEquals(response.getJsonPayload(), {
+            status: {
+            code: 0,
+            errorCode: null,
+            errorMessage: null
+            },
+            data: {
+                totalElement: 56,
+                transactions: txn
             }
         });
 }
