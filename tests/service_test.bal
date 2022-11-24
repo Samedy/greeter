@@ -2,6 +2,26 @@ import ballerina/test;
 import ballerina/http;
 
 http:Client testClient = check new ("http://localhost:9090/");
+http:Client clientEndpoint = check new ("http://localhost:9091/");
+
+var accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+
+public client class MockHttpClient {
+
+    remote function get(@untainted string path, map<string|string[]>? headers = (), http:TargetType targetType = http:Response) 
+    returns @tainted http:Response| anydata | http:ClientError {
+
+        http:Response response = new;
+        response.statusCode = 500;
+        response.setPayload({
+                accessToken: accessToken,
+                requireOtp: false,
+                requireChangePhone: true,
+                last3DigitsPhone: 123
+            });
+        return response;
+    }
+}
 
 @test:Config {}
 function get() returns error? {
@@ -19,12 +39,36 @@ function getWithName() returns error? {
 
 @test:Config {}
 function postInitLinkAccount() returns error? {
-    json req = {"loginType": "USER_PWD","login": "string","key": "string","bakongAccId": "string","phoneNumber": "string"};
+    clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
+    json req = {
+        "loginType": "USER_PWD",
+        "login": "string",
+        "key": "string",
+        "bakongAccId": "string",
+        "phoneNumber": "string"};
     http:Response response = check testClient->post("init-link-account",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
             status: {code: 0,errorCode: null,errorMessage: null},
-            data:{accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",requireOtp: false,requireChangePhone: true,last3DigitsPhone: 123}
+            data:{accessToken: accessToken,requireOtp: false,requireChangePhone: true,last3DigitsPhone: 123}
+        });
+}
+
+@test:Config {}
+function postInitLinkAccountWithOtp() returns error? {
+    requiredOtp = true;
+    clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
+    json req = {
+        "loginType": "USER_PWD",
+        "login": "string",
+        "key": "string",
+        "bakongAccId": "string",
+        "phoneNumber": "string"};
+    http:Response response = check testClient->post("init-link-account",req);
+    test:assertEquals(response.statusCode, 201);
+    test:assertEquals(response.getJsonPayload(), {
+            status: {code: 0,errorCode: null,errorMessage: null},
+            data:{accessToken: accessToken,requireOtp: true,requireChangePhone: true,last3DigitsPhone: 123}
         });
 }
 
@@ -57,7 +101,7 @@ function postAuthenticate() returns error? {
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
             status: {"code": 0,"errorCode": null,"errorMessage": null},
-            data:{requireChangePassword: true,accessToken: ""}
+            data:{requireChangePassword: false,accessToken: accessToken}
         });
 }
 

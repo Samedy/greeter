@@ -16,7 +16,7 @@ type InitLinkRes record {|
     string accessToken;
     boolean requireOtp;
     boolean requireChangePhone;
-    int last3DigitsPhone;
+    int last3DigitsPhone?;
 |};
 
 type OtpRes record {boolean isValid;};

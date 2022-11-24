@@ -6,7 +6,7 @@ sequenceDiagram
     actor Operator
     participant Mobile
     participant CBS
-    participant swift
+    participant Swift
     participant AML
     Customer->>Mobile: transfer by swift
     activate Mobile
@@ -172,6 +172,35 @@ sequenceDiagram
     activate NCS Gateway
     NCS Gateway-->>Maker: NCS transactions
     deactivate NCS Gateway
+    loop Every transaction
+        Maker->>AML: check AML
+        activate AML
+        AML-->>Maker: AML result
+        deactivate AML
+        Maker->>CBS: submit credit request
+        activate CBS
+        CBS-->>Maker: request status
+        deactivate CBS
+        Checker->>CBS: verify credit request
+        activate CBS
+        CBS-->>Checker: verify status
+        deactivate CBS
+    end
+```
+
+# Trade Finance inward from Swift
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Maker
+    actor Checker
+    participant Swift
+    participant CBS
+    participant AML
+    Maker->>Swift: download Swift messages
+    activate Swift
+    Swift-->>Maker: Swift messages
+    deactivate Swift
     loop Every transaction
         Maker->>AML: check AML
         activate AML
