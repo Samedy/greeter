@@ -188,31 +188,71 @@ sequenceDiagram
     end
 ```
 
-# Trade Finance inward from Swift
+# Manual Trade Finance inward from Swift
 ```mermaid
 sequenceDiagram
     autonumber
+    actor Operation
     actor Maker
     actor Checker
     participant Swift
     participant CBS
     participant AML
-    Maker->>Swift: download Swift messages
+    Operation->>Swift: download Swift messages
     activate Swift
-    Swift-->>Maker: Swift messages
+    Swift-->>Operation: Swift messages
     deactivate Swift
+    Operation->>Maker: send Swift messages via email
+    Maker-->>Operation: Swift messages
     loop Every transaction
         Maker->>AML: check AML
         activate AML
         AML-->>Maker: AML result
         deactivate AML
-        Maker->>CBS: submit credit request
+        opt CBS process
+            Maker->>CBS: submit swift request
+            activate CBS
+            CBS-->>Maker: request status
+            deactivate CBS
+            Checker->>CBS: verify swift request
+            activate CBS
+            CBS-->>Checker: verify status
+            deactivate CBS
+        end
+    end
+```
+
+# Trade Finance inward from Swift
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Remittance Manager
+    participant Swift Portal
+    Note over Swift Portal,Swift Auto Client: do we have UAT??
+    participant Swift Auto Client
+    participant CBS
+    participant AML
+    Swift Auto Client->>Swift Portal: download Swift messages
+    activate Swift Portal
+    Swift Portal-->>Swift Auto Client: Swift messages
+    deactivate Swift Portal
+    loop Every Incoming messages
         activate CBS
-        CBS-->>Maker: request status
+        CBS->>Swift Auto Client: Query incoming Swift messages
+        Swift Auto Client-->>CBS: Swift messages
+        CBS->>AML: check AML
+        activate AML
+        AML-->>CBS: AML result
+        deactivate AML
+        CBS->>CBS: submit swift request
         deactivate CBS
-        Checker->>CBS: verify credit request
-        activate CBS
-        CBS-->>Checker: verify status
-        deactivate CBS
+    end
+    loop Every Transaction
+        Remittance Manager->>CBS: review swift requests
+        CBS->>Remittance Manager: pending swift requests
+        opt saving process
+            Remittance Manager->>CBS: approve swift request
+            CBS-->>Remittance Manager: approve status 
+        end
     end
 ```

@@ -14,14 +14,6 @@ configurable boolean requireChangePhoneConfig = false;
 boolean requiredOtp = requiredOtpConfig;
 boolean requireChangePhone = requireChangePhoneConfig;
 
-http:Client authClient = check new(authUrl);
-map<string> headers = {
-    "Accept": "application/json",
-    "Authorization": "token " + apiMgrToken
-};
-
-http:Client otpClient = check new(otpUrl);
-
 service / on new http:Listener(9090) {
     resource function get greeting(@http:Header {name: "App-Name"} string appName) returns string {
         return "Hello, World!";
@@ -32,6 +24,11 @@ service / on new http:Listener(9090) {
     }
 
     resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|RespondStatus status; InitLinkRes? data;|}|error? {
+        http:Client authClient = check new(authUrl);
+        map<string> headers = {
+            "Accept": "application/json",
+            "Authorization": "token " + apiMgrToken
+        };
         //call to db to store request record
         //call to external service to validate username and password
         http:Response res = check authClient->post("login",{username:req.login,password:req.key}, headers);
@@ -45,7 +42,8 @@ service / on new http:Listener(9090) {
         if requiredOtp {
             canGenerateOtp = false;
             //generate otp
-            http:Response otpRes = check otpClient->post("/",{hash:""}, headers);
+            http:Client otpClient = check new(otpUrl);
+            http:Response otpRes = check otpClient->post("/",{username:req.login}, headers);
             if otpRes.statusCode == http:CREATED.status.code
             {
                 canGenerateOtp = true;
@@ -86,7 +84,12 @@ service / on new http:Listener(9090) {
         //get login request data for validate
         // hashing login request
         //call to otp service
-        http:Response res = check otpClient->post("/",{hash:username,otp:req.otpCode}, headers);
+        http:Client otpClient = check new(otpUrl);
+        map<string> headers = {
+            "Accept": "application/json",
+            "Authorization": "token " + apiMgrToken
+        };
+        http:Response res = check otpClient->put("/",{username:username,otp:req.otpCode}, headers);
         if res.statusCode == http:CREATED.status.code {
             return {
                 status: {
@@ -128,6 +131,11 @@ service / on new http:Listener(9090) {
         //call to db to store request record
 
         //call to external service to validate username and password
+        http:Client authClient = check new(authUrl);
+        map<string> headers = {
+            "Accept": "application/json",
+            "Authorization": "token " + apiMgrToken
+        };
         http:Response res = check authClient->post("login",{username:req.login,password:req.key}, headers);
         var result = check res.getJsonPayload();
         return {

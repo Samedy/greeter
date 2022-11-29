@@ -25,4 +25,11 @@ service /login on probeEP {
     }
 }
 
+service / on probeEP {
+    resource function put .(@http:Payload record {|string username;int otpCode;|} req) {
 
+    }
+    resource function post .(@http:Payload record {|string username;|} req) {
+        
+    }
+}
