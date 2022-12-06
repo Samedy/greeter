@@ -4,3 +4,45 @@
 4. replace the old definition in Definitions
 5. deploy balerine service
 6. update service host (production/uat)
+
+OTT via mobile:
+
+for USD -> auto debit from customer account
+    other currency -> team operation manual credit from customer
+
+goto mobile banking portal to download txn 2 or 3 times on working day. for non working day nothing is process
+
+    2: 8am or 8:30am and 1pm and 1:30pm
+    
+    check customer balance (principle+fee)
+
+    after check AML (not hit)
+    need to manual call to customer to check purpose (for NBC report).
+
+    debit customer -> credit swift nostro (GL KB + GL fee)
+
+    after check AML (hit) -> compliant team to analyze -> have notification to customer
+
+    bong Soklin said have OTT guideline in HR app 
+
+OTT via OTC:
+    after check AML (hit) -> true hit -> send to management by email
+
+ITT via Swift portal (morning 8am): -> verify receiver account number / name -> if the information is not match we will send back MT199 back to KB (1 week)
+-> get purpose for NBC report
+    separate msg type:
+        MT103 ?
+
+-> if sender hit need to investigate txn?
+    
+
+
+    4pm -> 5pm:
+
+    how about new morgage products?
+
+    from CBS:
+        in front end have only 1 interest rate
+
+    from Sampath:
+        last update he is checking

@@ -1,7 +1,8 @@
 import ballerina/http;
-//import ballerina/io;
+import ballerina/io;
+import ballerina/jwt;
 
-enum LoginType{
+enum LoginType {
     PHONE_PIN, USER_PWD
 }
 
@@ -16,17 +17,19 @@ configurable decimal feeConfig = 0;
 boolean requiredOtp = requiredOtpConfig;
 boolean requireChangePhone = requireChangePhoneConfig;
 
-readonly & map<string> authHeaders = { Accept: "application/json",Authorization: "token " + apiMgrToken};
+readonly & map<string> authHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
 
-readonly & map<string> otpHeaders = {Accept: "application/json",Authorization: "token " + apiMgrToken};
+readonly & map<string> otpHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
 
-readonly & map<string> cbsHeaders = {Accept: "application/json",Authorization: "token " + apiMgrToken};
+readonly & map<string> cbsHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
 
-isolated map<string> x = {"Accept": "application/json","Authorization": "token " + apiMgrToken};
+isolated map<string> x = {"Accept": "application/json", "Authorization": "token " + apiMgrToken};
 
 service / on new http:Listener(9090) {
     resource function get greeting(@http:Header {name: "App-Name"} string appName) returns string {
-         lock{ x = {"Accept": "application/json","Authorization": "token " + apiMgrToken};}
+        lock {
+            x = {"Accept": "application/json", "Authorization": "token " + apiMgrToken};
+        }
         return "Hello, World!";
     }
 
@@ -34,12 +37,16 @@ service / on new http:Listener(9090) {
         return "Hello " + name;
     }
 
+    # Description
+    #
+    # + req - Parameter Description
+    # + return - Return Value Description
     resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|RespondStatus status; InitLinkRes? data;|}|error? {
-        http:Client authClient = check new(authUrl);
+        http:Client authClient = check new (authUrl);
 
         //call to db to store request record
         //call to external service to validate username and password
-        http:Response res = check authClient->post("login",{username:req.login,password:req.key}, authHeaders);
+        http:Response res = check authClient->post("login", {username: req.login, password: req.key}, authHeaders);
         int phoneNumber = 0;
         var canGenerateOtp = true;
         if requireChangePhone {
@@ -50,15 +57,15 @@ service / on new http:Listener(9090) {
         if requiredOtp {
             canGenerateOtp = false;
             //generate otp
-            http:Client otpClient = check new(otpUrl);
-            http:Response otpRes = check otpClient->post("/",{ref:req.login}, otpHeaders);
+            http:Client otpClient = check new (otpUrl);
+            http:Response otpRes = check otpClient->post("/", {ref: req.login}, otpHeaders);
             if otpRes.statusCode == http:CREATED.status.code
             {
                 canGenerateOtp = true;
             }
         }
-        
-        if res.statusCode == http:CREATED.status.code && canGenerateOtp{
+
+        if res.statusCode == http:CREATED.status.code && canGenerateOtp {
             var result = check res.getJsonPayload();
             // io:println(y.toJsonString());
             return {
@@ -67,7 +74,7 @@ service / on new http:Listener(9090) {
                     errorCode: null,
                     errorMessage: null
                 },
-                data:{
+                data: {
                     accessToken: check result.accessToken,
                     requireOtp: requiredOtp,
                     requireChangePhone: requireChangePhone,
@@ -81,20 +88,20 @@ service / on new http:Listener(9090) {
                     errorCode: null,
                     errorMessage: null
                 },
-                data:null
+                data: null
             };
         }
     }
 
-    resource function post 'verify\-otp(@http:Payload record {|int otpCode;|} req) returns record {|RespondStatus status; OtpRes data;|} |error?{
+    resource function post 'verify\-otp(@http:Payload record {|int otpCode;|} req) returns record {|RespondStatus status; OtpRes data;|}|error? {
         //decrypt access token
-        var username ="";
+        var username = "";
         //get login request data for validate
         // hashing login request
         //call to otp service
-        http:Client otpClient = check new(otpUrl);
+        http:Client otpClient = check new (otpUrl);
 
-        http:Response res = check otpClient->put("/",{ref:username,otp:req.otpCode}, otpHeaders);
+        http:Response res = check otpClient->put("/", {ref: username, otp: req.otpCode}, otpHeaders);
         if res.statusCode == http:CREATED.status.code {
             return {
                 status: {
@@ -102,7 +109,7 @@ service / on new http:Listener(9090) {
                     errorCode: null,
                     errorMessage: null
                 },
-                data:{
+                data: {
                     isValid: true
                 }
             };
@@ -113,34 +120,51 @@ service / on new http:Listener(9090) {
                     errorCode: null,
                     errorMessage: null
                 },
-                data:{
+                data: {
                     isValid: false
                 }
             };
         }
     }
 
-    resource function post 'finish\-link\-account(@http:Payload AccountReq req) returns record {|RespondStatus status; FinishLinkAccountRes data;|}|error {
+    resource function post 'finish\-link\-account(@http:Payload AccountReq req,@http:Header {name: "Authorization"} string authorization) returns record {|RespondStatus status; FinishLinkAccountRes data;|}|error {
+        string accessToken = authorization.substring(7,authorization.length()-7);
+        [jwt:Header, jwt:Payload] [header, payload] = check jwt:decode(accessToken);
+        //get all account belong to user id
         http:Client cbsClient = check new(cbsUrl);
-        lock{http:Response res = check cbsClient->get(string `/${req.accNumber}`, cbsHeaders);}
+        http:Response res = check cbsClient->get(string `/${payload["sub"].toString()}`, cbsHeaders);
         //where can i save link account
-        return {
+        if res.statusCode == http:OK.status.code {
+            return {
+                status: {
+                    code: 0,
+                    errorCode: null,
+                    errorMessage: null
+                },
+                data: {
+                    requireChangePassword: true
+                }
+            };
+        } else {
+            return {
             status: {
-                code: 0,
+                code: 1,
                 errorCode: null,
                 errorMessage: null
             },
-            data:{
+            data: {
                 requireChangePassword: true
             }
         };
+        }
+        
     }
-    resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|RespondStatus 'status; AuthenticationRes data;|} |error?{
+    resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|RespondStatus 'status; AuthenticationRes data;|}|error? {
         //call to db to store request record
 
         //call to external service to validate username and password
-        http:Client authClient = check new(authUrl);
-        http:Response res = check authClient->post("login",{username:req.login,password:req.key}, authHeaders);
+        http:Client authClient = check new (authUrl);
+        http:Response res = check authClient->post("login", {username: req.login, password: req.key}, authHeaders);
         var result = check res.getJsonPayload();
         return {
             status: {
@@ -148,7 +172,7 @@ service / on new http:Listener(9090) {
                 errorCode: null,
                 errorMessage: null
             },
-            data:{
+            data: {
                 requireChangePassword: check result.requireChangePassword,
                 accessToken: check result.accessToken
             }
@@ -167,7 +191,7 @@ service / on new http:Listener(9090) {
     }
     resource function post 'account\-detail(@http:Payload AccountReq req) returns record {|RespondStatus 'status; Account data?;|}|error {
         //call to cbs to get txn record
-        http:Client cbsClient = check new(cbsUrl);
+        http:Client cbsClient = check new (cbsUrl);
         http:Response res = check cbsClient->get(string `/${req.accNumber}`, cbsHeaders);
         if res.statusCode == http:OK.status.code {
             var result = check res.getJsonPayload();
@@ -178,7 +202,7 @@ service / on new http:Listener(9090) {
                     "errorCode": null,
                     "errorMessage": null
                 },
-                data:acc
+                data: acc
             };
         }
         return {
@@ -189,16 +213,17 @@ service / on new http:Listener(9090) {
             }
         };
     }
-    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes? data;|} |error{
+    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes? data;|}|error {
         //submit txn to cbs to block balance
-        http:Client cbsClient = check new(cbsUrl);
-        http:Response res = check cbsClient->post(string `/transactions`,{}, cbsHeaders);
+        http:Client cbsClient = check new (cbsUrl);
+        http:Response res = check cbsClient->post(string `/transactions`, {}, cbsHeaders);
         var result = check res.getJsonPayload();
-        string refNumber =check result.reference;
+        io:println(result.toJsonString());
+        string refNumber = check result.reference;
         if requiredOtp {
             //generate otp
-            http:Client otpClient = check new(otpUrl);
-            http:Response otpRes = check otpClient->post("/",{ref:refNumber}, otpHeaders);
+            http:Client otpClient = check new (otpUrl);
+            http:Response otpRes = check otpClient->post("/", {ref: refNumber}, otpHeaders);
             if otpRes.statusCode == http:CREATED.status.code
             {
                 return {
@@ -207,7 +232,7 @@ service / on new http:Listener(9090) {
                         "errorCode": null,
                         "errorMessage": null
                     },
-                    data:{
+                    data: {
                         "initRefNumber": refNumber,
                         "debitAmount": req.amount,
                         "debitCcy": req.ccy,
@@ -215,7 +240,7 @@ service / on new http:Listener(9090) {
                         "requireOtp": requiredOtp
                     }
                 };
-            }else{
+            } else {
                 //release block balance when otp generation fail
                 res = check cbsClient->delete(string `/transactions/${refNumber}`, cbsHeaders);
                 //log to false release
@@ -227,14 +252,14 @@ service / on new http:Listener(9090) {
                 errorCode: null,
                 errorMessage: null
             },
-            data:null
+            data: null
         };
     }
     resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|RespondStatus 'status; ConfirmTransferRes? data;|}|error {
         boolean otpResult = true;
         if requiredOtp {
-            http:Client otpClient = check new(otpUrl);
-            http:Response res = check otpClient->put("/",{ref:req.initRefNumber,otp:req.otpCode}, otpHeaders);
+            http:Client otpClient = check new (otpUrl);
+            http:Response res = check otpClient->put("/", {ref: req.initRefNumber, otp: req.otpCode}, otpHeaders);
             if res.statusCode != http:CREATED.status.code {
                 otpResult = false;
             }
@@ -242,8 +267,8 @@ service / on new http:Listener(9090) {
         //submit txn to cbs to complete the txn
         if otpResult {
             //call to cbs to get CIF phone number
-            http:Client cbsClient = check new(cbsUrl);
-            http:Response res = check cbsClient->put(string `/transactions`,{}, cbsHeaders);
+            http:Client cbsClient = check new (cbsUrl);
+            http:Response res = check cbsClient->put(string `/transactions`, {}, cbsHeaders);
             var result = check res.getJsonPayload();
             if res.statusCode == http:OK.status.code {
                 return {
@@ -252,7 +277,7 @@ service / on new http:Listener(9090) {
                         errorCode: null,
                         errorMessage: null
                     },
-                    data:{
+                    data: {
                         transactionId: check result.reference,
                         transactionDate: check result.transactionDate,
                         transactionHash: check result.transactionHash
@@ -266,28 +291,28 @@ service / on new http:Listener(9090) {
                 errorCode: null,
                 errorMessage: null
             },
-            data:null
+            data: null
         };
     }
-    resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|RespondStatus 'status; AccountTransactionsRes data;|} |error{
+    resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|RespondStatus 'status; AccountTransactionsRes data;|}|error {
         //validate request
         var emp = {
-                status: {
+            status: {
                 code: 1,
                 errorCode: null,
                 errorMessage: "invalid"
-                },
-                data: {
-                    totalElement: 0,
-                    transactions: []
-                }
-            };
-        if req.size >100 || req.page<1 {
+            },
+            data: {
+                totalElement: 0,
+                transactions: []
+            }
+        };
+        if req.size > 100 || req.page < 1 {
             return emp;
         }
-        else{
+        else {
             //call to cbs to get txn record
-            http:Client cbsClient = check new(cbsUrl);
+            http:Client cbsClient = check new (cbsUrl);
             http:Response res = check cbsClient->get(string `/${req.accNumber}/transactions?page=${req.page}&size=${req.size}`, cbsHeaders);
             if res.statusCode == http:OK.status.code {
                 var result = check res.getJsonPayload();
@@ -304,7 +329,7 @@ service / on new http:Listener(9090) {
                     }
                 };
             }
-            else{
+            else {
                 return emp;
             }
         }

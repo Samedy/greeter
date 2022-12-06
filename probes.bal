@@ -51,7 +51,10 @@ service /cbs on probeEP {
         }];
         return arr;
     }
-    resource function get [string acc]() returns Account{
+    resource function get customers/[string cus]() returns Account[]{
+        return [];
+    }
+    resource function get accounts/[string acc]() returns Account{
         return {
                 accNumber: "xxxxxxxxx",
                 accName: "Jonh Smith",
@@ -70,20 +73,23 @@ service /cbs on probeEP {
     }
     resource function post transactions(@http:Payload json req) returns record{}{
         return {
-                "transactionId": "xxxxxxxxx",
-                "transactionDate": 1624585517749
+                "reference": "xxxxxxxxx",
+                "transactionDate": 1624585517749,
+                "transactionHash": "xxxxxxxxx"
             };
     }
     resource function put transactions(@http:Payload json req) returns record{}{
         return {
-                "transactionId": "xxxxxxxxx",
-                "transactionDate": 1624585517749
+                "reference": "xxxxxxxxx",
+                "transactionDate": 1624585517749,
+                "transactionHash": "xxxxxxxxx"
             };
     }
     resource function delete transactions(@http:Payload json req) returns record{}{
         return {
-                "transactionId": "xxxxxxxxx",
-                "transactionDate": 1624585517749
+                "reference": "xxxxxxxxx",
+                "transactionDate": 1624585517749,
+                "transactionHash": "xxxxxxxxx"
             };
     }
 }
