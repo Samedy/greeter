@@ -7,6 +7,8 @@ enum LoginType {
 }
 
 configurable string apiMgrToken = "";
+configurable string OtpToken = "";
+configurable string cbsToken = "";
 configurable string authUrl = "http://localhost:9091/";
 configurable string otpUrl = "http://localhost:9091/";
 configurable string cbsUrl = "http://localhost:9091/cbs";
@@ -14,26 +16,25 @@ configurable boolean requiredOtpConfig = false;
 configurable boolean requireChangePhoneConfig = false;
 configurable decimal feeConfig = 0;
 
-boolean requiredOtp = requiredOtpConfig;
-boolean requireChangePhone = requireChangePhoneConfig;
+// boolean requiredOtp = requiredOtpConfig;
+// boolean requireChangePhone = requireChangePhoneConfig;
 
-readonly & map<string> authHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
+const ACCEPT_HEADER ="application/json";
 
-readonly & map<string> otpHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
+// readonly & map<string> authHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
 
-readonly & map<string> cbsHeaders = {Accept: "application/json", Authorization: "token " + apiMgrToken};
+// readonly & map<string> otpHeaders = {Accept: "application/json", Authorization: "token " + OtpToken};
 
-isolated map<string> x = {"Accept": "application/json", "Authorization": "token " + apiMgrToken};
+// readonly & map<string> cbsHeaders = {Accept: "application/json", Authorization: "token " + cbsToken};
+
+// isolated map<string> x = {"Accept": "application/json", "Authorization": "token " + apiMgrToken};
 
 service / on new http:Listener(9090) {
     resource function get greeting(@http:Header {name: "App-Name"} string appName) returns string {
-        lock {
-            x = {"Accept": "application/json", "Authorization": "token " + apiMgrToken};
-        }
         return "Hello, World!";
     }
 
-    resource function get greeting/[string name]() returns string {
+    resource function get greeting/[string name]() returns string |error?{
         return "Hello " + name;
     }
 
@@ -46,19 +47,19 @@ service / on new http:Listener(9090) {
 
         //call to db to store request record
         //call to external service to validate username and password
-        http:Response res = check authClient->post("login", {username: req.login, password: req.key}, authHeaders);
+        http:Response res = check authClient->post("login", {username: req.login, password: req.key}, {Accept: ACCEPT_HEADER, Authorization: "token " + apiMgrToken});
         int phoneNumber = 0;
         var canGenerateOtp = true;
-        if requireChangePhone {
+        if requireChangePhoneConfig {
             //call to cbs to get CIF phone number
             phoneNumber = 123;
         }
 
-        if requiredOtp {
+        if requiredOtpConfig {
             canGenerateOtp = false;
             //generate otp
             http:Client otpClient = check new (otpUrl);
-            http:Response otpRes = check otpClient->post("/", {ref: req.login}, otpHeaders);
+            http:Response otpRes = check otpClient->post("/", {ref: req.login}, {Accept: ACCEPT_HEADER, Authorization: "token " + apiMgrToken});
             if otpRes.statusCode == http:CREATED.status.code
             {
                 canGenerateOtp = true;
@@ -76,8 +77,8 @@ service / on new http:Listener(9090) {
                 },
                 data: {
                     accessToken: check result.accessToken,
-                    requireOtp: requiredOtp,
-                    requireChangePhone: requireChangePhone,
+                    requireOtp: requiredOtpConfig,
+                    requireChangePhone: requireChangePhoneConfig,
                     last3DigitsPhone: phoneNumber
                 }
             };
@@ -101,7 +102,7 @@ service / on new http:Listener(9090) {
         //call to otp service
         http:Client otpClient = check new (otpUrl);
 
-        http:Response res = check otpClient->put("/", {ref: username, otp: req.otpCode}, otpHeaders);
+        http:Response res = check otpClient->put("/", {ref: username, otp: req.otpCode}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
         if res.statusCode == http:CREATED.status.code {
             return {
                 status: {
@@ -132,7 +133,7 @@ service / on new http:Listener(9090) {
         [jwt:Header, jwt:Payload] [header, payload] = check jwt:decode(accessToken);
         //get all account belong to user id
         http:Client cbsClient = check new(cbsUrl);
-        http:Response res = check cbsClient->get(string `/${payload["sub"].toString()}`, cbsHeaders);
+        http:Response res = check cbsClient->get(string `/${payload["sub"].toString()}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
         //where can i save link account
         if res.statusCode == http:OK.status.code {
             return {
@@ -164,7 +165,7 @@ service / on new http:Listener(9090) {
 
         //call to external service to validate username and password
         http:Client authClient = check new (authUrl);
-        http:Response res = check authClient->post("login", {username: req.login, password: req.key}, authHeaders);
+        http:Response res = check authClient->post("login", {username: req.login, password: req.key}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
         var result = check res.getJsonPayload();
         return {
             status: {
@@ -192,7 +193,7 @@ service / on new http:Listener(9090) {
     resource function post 'account\-detail(@http:Payload AccountReq req) returns record {|RespondStatus 'status; Account data?;|}|error {
         //call to cbs to get txn record
         http:Client cbsClient = check new (cbsUrl);
-        http:Response res = check cbsClient->get(string `/${req.accNumber}`, cbsHeaders);
+        http:Response res = check cbsClient->get(string `/${req.accNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
         if res.statusCode == http:OK.status.code {
             var result = check res.getJsonPayload();
             Account acc = check result.cloneWithType();
@@ -216,14 +217,14 @@ service / on new http:Listener(9090) {
     resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes? data;|}|error {
         //submit txn to cbs to block balance
         http:Client cbsClient = check new (cbsUrl);
-        http:Response res = check cbsClient->post(string `/transactions`, {}, cbsHeaders);
+        http:Response res = check cbsClient->post(string `/transactions`, {}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
         var result = check res.getJsonPayload();
         io:println(result.toJsonString());
         string refNumber = check result.reference;
-        if requiredOtp {
+        if requiredOtpConfig {
             //generate otp
             http:Client otpClient = check new (otpUrl);
-            http:Response otpRes = check otpClient->post("/", {ref: refNumber}, otpHeaders);
+            http:Response otpRes = check otpClient->post("/", {ref: refNumber}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
             if otpRes.statusCode == http:CREATED.status.code
             {
                 return {
@@ -237,12 +238,12 @@ service / on new http:Listener(9090) {
                         "debitAmount": req.amount,
                         "debitCcy": req.ccy,
                         "fee": feeConfig,
-                        "requireOtp": requiredOtp
+                        "requireOtp": requiredOtpConfig
                     }
                 };
             } else {
                 //release block balance when otp generation fail
-                res = check cbsClient->delete(string `/transactions/${refNumber}`, cbsHeaders);
+                res = check cbsClient->delete(string `/transactions/${refNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
                 //log to false release
             }
         }
@@ -257,9 +258,9 @@ service / on new http:Listener(9090) {
     }
     resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|RespondStatus 'status; ConfirmTransferRes? data;|}|error {
         boolean otpResult = true;
-        if requiredOtp {
+        if requiredOtpConfig {
             http:Client otpClient = check new (otpUrl);
-            http:Response res = check otpClient->put("/", {ref: req.initRefNumber, otp: req.otpCode}, otpHeaders);
+            http:Response res = check otpClient->put("/", {ref: req.initRefNumber, otp: req.otpCode}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
             if res.statusCode != http:CREATED.status.code {
                 otpResult = false;
             }
@@ -268,7 +269,7 @@ service / on new http:Listener(9090) {
         if otpResult {
             //call to cbs to get CIF phone number
             http:Client cbsClient = check new (cbsUrl);
-            http:Response res = check cbsClient->put(string `/transactions`, {}, cbsHeaders);
+            http:Response res = check cbsClient->put(string `/transactions`, {}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
             var result = check res.getJsonPayload();
             if res.statusCode == http:OK.status.code {
                 return {
@@ -313,7 +314,7 @@ service / on new http:Listener(9090) {
         else {
             //call to cbs to get txn record
             http:Client cbsClient = check new (cbsUrl);
-            http:Response res = check cbsClient->get(string `/${req.accNumber}/transactions?page=${req.page}&size=${req.size}`, cbsHeaders);
+            http:Response res = check cbsClient->get(string `/${req.accNumber}/transactions?page=${req.page}&size=${req.size}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
             if res.statusCode == http:OK.status.code {
                 var result = check res.getJsonPayload();
                 Transaction[] txnList = check result.cloneWithType();

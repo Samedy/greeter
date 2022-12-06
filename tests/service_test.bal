@@ -69,7 +69,7 @@ function postInitLinkAccount() returns error? {
 
 @test:Config {}
 function postInitLinkAccountWithOtp() returns error? {
-    requiredOtp = true;
+    //requiredOtp = true;
     clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
     json req = {
         "loginType": "USER_PWD",
@@ -81,7 +81,7 @@ function postInitLinkAccountWithOtp() returns error? {
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
             status: {code: 0,errorCode: null,errorMessage: null},
-            data:{accessToken: accessToken,requireOtp: true,requireChangePhone: true,last3DigitsPhone: 123}
+            data:{accessToken: accessToken,requireOtpConfig: true,requireChangePhone: true,last3DigitsPhone: 123}
         });
 }
 
