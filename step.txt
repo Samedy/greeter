@@ -46,3 +46,13 @@ ITT via Swift portal (morning 8am): -> verify receiver account number / name -> 
 
     from Sampath:
         last update he is checking
+
+we need to have separate product or existing product? 
+confirm from request owner to use new product.-> if new we need to request to product owner to create it. -> new AML flate file
+low impact to existing product so testing need to be done end to end.
+
+for API -> current API support only USD so we need to enhance it with KHR -> put in FSD as a reference
+
+for account and GL -> need to request and create
+
+requester will raise to accounting dpt to create account -> both RIA and NBC

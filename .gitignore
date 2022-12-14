@@ -1,2 +1,7 @@
 target
 libs
+.choreo
+.githooks
+.terraform
+.terraform.lock.hcl
+.vscode

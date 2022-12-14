@@ -1,4 +1,9 @@
 apiMgrToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 authUrl = "http://localhost:9091/"
-requiredOtpConfig = false
-requireChangePhoneConfig = false
+# requiredOtpConfig = false
+isUnitTesting = true
+host = "localhost"
+port = 5439
+user = "test"
+password = "test"
+database = "test"

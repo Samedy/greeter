@@ -12,3 +12,16 @@ observabilityIncluded = true
 # artifactId = "jwt-native"
 # version = "2.4.0"
 #path = "./libs/jwt-native-2.4.0.jar"
+[[platform.java11.dependency]]
+groupId = "org.postgresql"
+artifactId = "postgresql"
+version = "42.2.20"
+
+[ballerina.log]
+level = "DEBUG"
+# format = "json"
+
+[[ballerina.log.modules]]
+name = "samedytesting/testing"
+level = "[LOG_LEVEL]"
+

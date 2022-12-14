@@ -1,27 +1,27 @@
 import ballerina/test;
 import ballerina/http;
 import ballerina/jwt;
+//import ballerinax/postgresql;
+// import ballerina/io;
+import ballerina/sql;
 
 http:Client testClient = check new ("http://localhost:9090/");
-http:Client clientEndpoint = check new ("http://localhost:9091/");
+http:Client authEndpoint = check new ("http://localhost:9091/");
+http:Client cbsEndpoint = check new ("http://localhost:9092/cbs");
+http:Client otpEndpoint = check new ("http://localhost:9093/");
 
-var accessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-
-public client class MockHttpClient {
-
-    remote function get(@untainted string path, map<string|string[]>? headers = (), http:TargetType targetType = http:Response) 
-    returns @tainted http:Response| anydata | http:ClientError {
-
-        http:Response response = new;
-        response.statusCode = 500;
-        response.setPayload({
-                accessToken: accessToken,
-                requireOtp: false,
-                requireChangePhone: true,
-                last3DigitsPhone: 123
-            });
-        return response;
-    }
+@test:BeforeSuite
+function beforeSuiteFunc() {
+    // clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
+    // cbsEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
+    sql:ExecutionResult result = {affectedRowCount:1,lastInsertId: ()};
+    stream<record{}, sql:Error?> rowStream = new();
+    // test:prepare(db).when("update").doNothing();
+    test:prepare(db).when("query").thenReturn(rowStream);
+    test:prepare(db).when("queryRow").thenReturn(result);
+    test:prepare(db).when("execute").thenReturn(result);
+    // test:prepare(testClient).when("init").doNothing();
+    // test:prepare(testClient).getMember("db").thenReturn(db);
 }
 
 @test:Config {}
@@ -42,53 +42,38 @@ function getWithName() returns error? {
 
 @test:Config {}
 function decodeJwt() returns error? {
-    string testtoken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGRvbWFpbiIsIklzc3VlciI6Iklzc3VlciIsImF1dGgiOiJbXCJjYW5fZ2V0X2JhbGFuY2VcIiwgXCJjYW5fdG9wX3VwXCJdIiwiZXhwIjoiMTYyNDU4NTUxNzc0OSIsImlhdCI6MTY2OTk2NzM4Mn0.Ixol_dmUxDJm-BBhEsZ5NFMnPGzE1o8TS2J5ZbJv1VM";
-    [jwt:Header, jwt:Payload] [header, payload] = check jwt:decode(testtoken);
+    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(accessToken);
     check fixPayload(payload);
-    json x = {"sub":"user@domain","exp":1624585517749,"iat":1669967382,"Issuer":"Issuer","auth":["can_get_balance", "can_top_up"]};
     test:assertTrue(payload["auth"] is json[]);
-    test:assertEquals(payload.toJson(), x);
+    test:assertEquals(payload.toJson(), decryptToken);
 }
 
 @test:Config {}
 function postInitLinkAccount() returns error? {
-    clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
-    json req = {
-        "loginType": "USER_PWD",
-        "login": "string",
-        "key": "string",
-        "bakongAccId": "string",
-        "phoneNumber": "string"};
-    http:Response response = check testClient->post("init-link-account",req);
+    http:Response response = check testClient->post("init-link-account",linkReq);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
             status: {code: 0,errorCode: null,errorMessage: null},
-            data:{accessToken: accessToken,requireOtp: false,requireChangePhone: true,last3DigitsPhone: 123}
+            data:linkRes
         });
 }
 
 @test:Config {}
 function postInitLinkAccountWithOtp() returns error? {
-    //requiredOtp = true;
-    clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
-    json req = {
-        "loginType": "USER_PWD",
-        "login": "string",
-        "key": "string",
-        "bakongAccId": "string",
-        "phoneNumber": "string"};
-    http:Response response = check testClient->post("init-link-account",req);
+    customer.requiredOtp=true;
+    //linkReq.requiredOtp=true;
+    http:Response response = check testClient->post("init-link-account",linkReq);
     test:assertEquals(response.statusCode, 201);
+    test:assertTrue(customer.requiredOtp);
     test:assertEquals(response.getJsonPayload(), {
             status: {code: 0,errorCode: null,errorMessage: null},
-            data:{accessToken: accessToken,requireOtpConfig: true,requireChangePhone: true,last3DigitsPhone: 123}
+            data:linkResWithOtp
         });
 }
 
 @test:Config {}
 function postVerifyOtp() returns error? {
-    clientEndpoint=<http:Client>test:mock(http:Client, new MockHttpClient());
-    http:RequestMessage req = {"otpCode": 123};
+    http:RequestMessage req = {otpCode: 123};
     http:Response response = check testClient->post("verify-otp",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
@@ -142,36 +127,20 @@ function postAccountDetail() returns error? {
                 "errorCode": null,
                 "errorMessage": null
             },
-            data:{
-                accNumber: "xxxxxxxxx",
-                accName: "Jonh Smith",
-                accPhone: "012345678",
-                accType: "SAVINGS",
-                accCcy: "USD",
-                accStatus: "ACTIVE",
-                kycStatus: "FULL",
-                country: "KH",
-                balance: 1000.0d,
-                'limit: {
-                    minTrxAmount: 1.0d,
-                    maxTrxAmount: 100.0d
-                }
-            }
+            data:account
         });
 }
 
 @test:Config {}
 function postInitTransaction() returns error? {
-    json req = {"type": "string", "sourceAcc": "string","destinationAcc": "string","amount": 0,"ccy": "string","desc": "string"};
+    json req = {"type": "string", "sourceAcc": "string","destinationAcc": "string","amount": check txnRes.debitAmount,"ccy": check txnRes.debitCcy,"desc": "string"};
     http:Response response = check testClient->post("init-transaction",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
         status: {
             "code": 0,"errorCode": null,"errorMessage": null
         },
-        data:{
-            "initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM","debitAmount": 10.0d,"debitCcy": "USD","fee": 0,"requireOtp": false
-        }
+        data:txnRes
     });
 }
 
@@ -198,22 +167,7 @@ function postFinishTransaction() returns error? {
 
 @test:Config {}
 function postAccountTransactions() returns error? {
-    json req = {"accNumber": "string",
-  "page": 0,
-  "size": 0};
-    json[] txn = [{
-                        "type": "CASA_TO_WALLET",
-                        "sourceAcc": "xxxxxxxxx",
-                        "destinationAcc": "user@domain",
-                        "amount": 10.0,
-                        "ccy": "USD",
-                        "desc": "Top up my wallet",
-                        "status": "SUCCESS",
-                        "cdtDbtInd": "D",
-                        "transactionId": "xxxxxxxxx",
-                        "transactionDate": 1624585517749,
-                        "transactionHash": "xxxxxxxxx"
-                        }];
+    json req = {"accNumber": "string","page": 1,"size": 1};
     http:Response response = check testClient->post("account-transactions",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
@@ -223,7 +177,7 @@ function postAccountTransactions() returns error? {
             errorMessage: null
             },
             data: {
-                totalElement: 56,
+                totalElement: txn.length(),
                 transactions: txn
             }
         });
