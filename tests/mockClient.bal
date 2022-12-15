@@ -1,12 +1,11 @@
 import ballerina/http;
 
-// import ballerina/io;
-// import ballerina/log;
 var requireOtp = false;
 var requireChangePhone = false;
 json decryptToken = {"sub": "user@domain", "exp": 1624585517749, "iat": 1669967382, "Issuer": "Issuer", "auth": ["can_get_balance", "can_top_up"]};
 var accessToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGRvbWFpbiIsIklzc3VlciI6Iklzc3VlciIsImF1dGgiOiJbXCJjYW5fZ2V0X2JhbGFuY2VcIiwgXCJjYW5fdG9wX3VwXCJdIiwiZXhwIjoiMTYyNDU4NTUxNzc0OSIsImlhdCI6MTY2OTk2NzM4Mn0.Ixol_dmUxDJm-BBhEsZ5NFMnPGzE1o8TS2J5ZbJv1VM";
 json linkReq = {"loginType": "USER_PWD", "login": "string", "key": "string", "bakongAccId": "string", "phoneNumber": "string"};
+json invalidLinkReq = {"loginType": "USER_PWD", "login": "string", "key": "invalid", "bakongAccId": "string", "phoneNumber": "string"};
 json linkRes = {accessToken: accessToken, requireOtp: false, requireChangePhone: requireChangePhone, last3DigitsPhone: "789"};
 json linkResWithOtp = {accessToken: accessToken, requireOtp: true, requireChangePhone: requireChangePhone, last3DigitsPhone: "789"};
 Customer customer = {phoneNumber: "123 456 789", requireChangePhone: requireChangePhone, requiredOtp: requireOtp};
@@ -50,7 +49,12 @@ service /login on probeEP {
             accessToken: accessToken
         };
     }
-    resource function post .() returns json {
+    resource function post .(@http:Payload record {string username; string password;} req) returns @tainted http:Response|json|http:ClientError{
+        if req.password=="invalid"{
+            http:Response response = new;
+            response.statusCode = 401;
+            return response;
+        }
         return {
             accessToken: accessToken,
             requireChangePassword: false
@@ -60,6 +64,11 @@ service /login on probeEP {
 
 service / on otpEP {
     resource function put .(@http:Payload record {|string ref; int otpCode;|} req) returns @tainted http:Response|anydata|http:ClientError {
+        if req.otpCode==111{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
         http:Response response = new;
         response.statusCode = 200;
         return response;

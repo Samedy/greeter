@@ -5,13 +5,6 @@ import ballerinax/postgresql.driver as _;
 import ballerina/uuid;
 import ballerina/test;
 
-configurable string host = ?;
-configurable int port = ?;
-configurable string user = ?;
-configurable string password = ?;
-configurable string database = ?;
-configurable boolean isUnitTesting = true;
-
 function fixPayload(jwt:Payload payload) returns error? {
     var auth =payload["auth"].toString().fromJsonString() ;
     payload["auth"] = check auth;

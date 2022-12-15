@@ -72,6 +72,16 @@ function postInitLinkAccountWithOtp() returns error? {
 }
 
 @test:Config {}
+function postInitLinkAccountWithInvalidPassword() returns error? {
+    http:Response response = check testClient->post("init-link-account",invalidLinkReq);
+    test:assertEquals(response.statusCode, 201);
+    test:assertEquals(response.getJsonPayload(), {
+            status: {code: 1,errorCode: null,errorMessage: null},
+            data:null
+        });
+}
+
+@test:Config {}
 function postVerifyOtp() returns error? {
     http:RequestMessage req = {otpCode: 123};
     http:Response response = check testClient->post("verify-otp",req);
@@ -79,6 +89,17 @@ function postVerifyOtp() returns error? {
     test:assertEquals(response.getJsonPayload(), {
             status: {code: 0,errorCode: null,errorMessage: null},
             data:{isValid: true}
+        });
+}
+
+@test:Config {}
+function postVerifyInvalidOtp() returns error? {
+    http:RequestMessage req = {otpCode: 111};
+    http:Response response = check testClient->post("verify-otp",req);
+    test:assertEquals(response.statusCode, 201);
+    test:assertEquals(response.getJsonPayload(), {
+            status: {code: 1,errorCode: null,errorMessage: null},
+            data:{isValid: false}
         });
 }
 

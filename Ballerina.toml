@@ -19,9 +19,9 @@ version = "42.2.20"
 
 [ballerina.log]
 level = "DEBUG"
-# format = "json"
+format = "json"
 
 [[ballerina.log.modules]]
 name = "samedytesting/testing"
-level = "[LOG_LEVEL]"
+level = "DEBUG"
 

@@ -13,6 +13,12 @@ configurable string cbsToken = "";
 configurable string authUrl = "http://localhost:9091/";
 configurable string otpUrl = "http://localhost:9093/";
 configurable string cbsUrl = "http://localhost:9092/cbs";
+configurable string host = ?;
+configurable int port = ?;
+configurable string user = ?;
+configurable string password = ?;
+configurable string database = ?;
+configurable boolean isUnitTesting = true;
 
 const ACCEPT_HEADER ="application/json";
 
@@ -39,8 +45,9 @@ service / on new http:Listener(9090) {
         boolean requireChangePhone = false;
         //call to external service to validate username and password
         http:Client authClient = check new (authUrl);
+        log:printInfo("service info: "+ req.key, id = 845315);
         http:Response res = check authClient->post("login", {username: req.login, password: req.key}, {Accept: ACCEPT_HEADER, Authorization: "token " + apiMgrToken});
-        
+        log:printInfo("auth info: "+ res.statusCode.toString(), id = 845315);
         string phoneNumber = "";
         var canGenerateOtp = true;
         //call to cbs to get CIF phone number
@@ -57,10 +64,9 @@ service / on new http:Listener(9090) {
             //generate otp
             http:Client otpClient = check new (otpUrl);
             http:Response otpRes = check otpClient->post("", {ref: req.login}, {Accept: ACCEPT_HEADER, Authorization: "token " + OtpToken});
-            log:printInfo("otp info: "+ otpRes.statusCode.toString(), id = 845315);
+            
             if otpRes.statusCode == http:OK.status.code
             {
-
                 canGenerateOtp = true;
             }
         }
@@ -98,7 +104,6 @@ service / on new http:Listener(9090) {
         //get login request data for validate
         // hashing login request
         //call to otp service
-        log:printInfo("req info: "+ req.otpCode.toString(), id = 845315);
         http:Client otpClient = check new (otpUrl);
         http:Response res = check otpClient->put("", {ref: username, otpCode: req.otpCode}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
         
@@ -132,11 +137,14 @@ service / on new http:Listener(9090) {
         [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(accessToken);
         //get all account belong to user id
         http:Client cbsClient = check new(cbsUrl);
-        http:Response res = check cbsClient->get(string `/customers/${payload["sub"].toString()}/accounts`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-
-        
-        //where can i save link account
-        if res.statusCode == http:OK.status.code {
+        http:Response res = check cbsClient->get(string `/customers/${payload["sub"].toString()}/accounts`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
+        //cross check each account number
+        log:printInfo("req info: "+ res.statusCode.toString(), id = 845315);
+        var accountOwner = false;
+        //TODO: do we need to add this to customer?
+        var requireChangePassword = false;
+        //log the link account -> set flag in CBS to mark
+        if res.statusCode == http:OK.status.code && accountOwner {
             return {
                 status: {
                     code: 0,
@@ -144,20 +152,20 @@ service / on new http:Listener(9090) {
                     errorMessage: null
                 },
                 data: {
-                    requireChangePassword: true
+                    requireChangePassword: requireChangePassword
                 }
             };
         } else {
             return {
-            status: {
-                code: 1,
-                errorCode: null,
-                errorMessage: null
-            },
-            data: {
-                requireChangePassword: true
-            }
-        };
+                status: {
+                    code: 1,
+                    errorCode: null,
+                    errorMessage: null
+                },
+                data: {
+                    requireChangePassword: requireChangePassword
+                }
+            };
         }
         
     }
@@ -180,8 +188,25 @@ service / on new http:Listener(9090) {
             }
         };
     }
-    resource function post 'unlink\-account(@http:Payload AccountReq req) returns record {|RespondStatus 'status; string data;|} {
-        //what can i do to unlink account
+    //FIXME: check on the issue
+    resource function post 'unlink\-account(@http:Payload AccountReq req,@http:Header {name: "Authorization"} string authorization) returns record {|RespondStatus 'status; string data;|}|error {
+        string accessToken = authorization.substring(7,authorization.length()-7);
+        [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(accessToken);
+        //get all account belong to user id
+        http:Client cbsClient = check new(cbsUrl);
+        http:Response res = check cbsClient->get(string `/customers/${payload["sub"].toString()}/accounts`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
+        //cross check each account number
+        var accountOwner = false;
+        if res.statusCode == http:OK.status.code && accountOwner{
+            return {
+                status: {
+                    code: 0,
+                    errorCode: null,
+                    errorMessage: null
+                },
+                data: ""
+            };
+        }
         return {
             status: {
                 code: 0,
