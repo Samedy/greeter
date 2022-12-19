@@ -19,6 +19,7 @@ configurable string user = ?;
 configurable string password = ?;
 configurable string database = ?;
 configurable boolean isUnitTesting = true;
+configurable decimal largeAmount = 1000d;
 
 const ACCEPT_HEADER ="application/json";
 
@@ -138,13 +139,24 @@ service / on new http:Listener(9090) {
         //get all account belong to user id
         http:Client cbsClient = check new(cbsUrl);
         http:Response res = check cbsClient->get(string `/customers/${payload["sub"].toString()}/accounts`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
-        //cross check each account number
-        log:printInfo("req info: "+ res.statusCode.toString(), id = 845315);
         var accountOwner = false;
+        if res.statusCode == http:OK.status.code{
+            //cross check each account number
+            var result = check res.getJsonPayload();
+            Account[] accList = check result.cloneWithType();
+            foreach Account a in accList {
+                if a.accNumber==req.accNumber{
+                    accountOwner = true;
+                    break;
+                }
+            }
+        }
+        
         //TODO: do we need to add this to customer?
         var requireChangePassword = false;
-        //log the link account -> set flag in CBS to mark
-        if res.statusCode == http:OK.status.code && accountOwner {
+        if  accountOwner {
+            //log the link account -> set flag in CBS to mark
+            http:Response _ = check cbsClient->put(string `/accounts/${req.accNumber}/status`, {link: true}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
             return {
                 status: {
                     code: 0,
@@ -169,6 +181,7 @@ service / on new http:Listener(9090) {
         }
         
     }
+
     resource function post 'authenticate(@http:Payload AuthenticationReq req) returns record {|RespondStatus 'status; AuthenticationRes data;|}|error? {
         //call to db to store request record
 
@@ -188,16 +201,17 @@ service / on new http:Listener(9090) {
             }
         };
     }
-    //FIXME: check on the issue
+
     resource function post 'unlink\-account(@http:Payload AccountReq req,@http:Header {name: "Authorization"} string authorization) returns record {|RespondStatus 'status; string data;|}|error {
-        string accessToken = authorization.substring(7,authorization.length()-7);
-        [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(accessToken);
-        //get all account belong to user id
+        // string accessToken = authorization.substring(7,authorization.length()-7);
+        // [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(accessToken);
+        //log the link account -> unset flag in CBS to mark
         http:Client cbsClient = check new(cbsUrl);
-        http:Response res = check cbsClient->get(string `/customers/${payload["sub"].toString()}/accounts`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
-        //cross check each account number
-        var accountOwner = false;
-        if res.statusCode == http:OK.status.code && accountOwner{
+        http:Response res = check cbsClient->put(string `/accounts/${req.accNumber}/status`, {link: false}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
+        
+        if res.statusCode == http:OK.status.code{
+            // log:printInfo("acc info: "+ a.toString(), id = 845315);
+        
             return {
                 status: {
                     code: 0,
@@ -209,17 +223,18 @@ service / on new http:Listener(9090) {
         }
         return {
             status: {
-                code: 0,
+                code: 1,
                 errorCode: null,
                 errorMessage: null
             },
             data: ""
         };
     }
+
     resource function post 'account\-detail(@http:Payload AccountReq req) returns record {|RespondStatus 'status; Account data?;|}|error {
         //call to cbs to get txn record
         http:Client cbsClient = check new (cbsUrl);
-        http:Response res = check cbsClient->get(string `/accounts/${req.accNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
+        http:Response res = check cbsClient->get(string `/accounts/${req.accNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
         if res.statusCode == http:OK.status.code {
             var result = check res.getJsonPayload();
             Account acc = check result.cloneWithType();
@@ -240,27 +255,41 @@ service / on new http:Listener(9090) {
             }
         };
     }
+
     resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes? data;|}|error {
         //submit txn to cbs to block balance
-        http:Client cbsClient = check new (cbsUrl);
         var requiredOtp =false;
-        var fee=0d;
-        http:Response res = check cbsClient->post(string `/transactions`, {}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-        var result = check res.getJsonPayload();
-        log:printInfo("error log with cause " + check res.getTextPayload(), id = 845315);
-        string refNumber = check result.reference;
-        if requiredOtp {
-            //generate otp
-            http:Client otpClient = check new (otpUrl);
-            http:Response otpRes = check otpClient->post("/", {ref: refNumber}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-            if otpRes.statusCode != http:CREATED.status.code
-            {
-                //release block balance when otp generation fail
-                res = check cbsClient->delete(string `/transactions/${refNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-                //log to false release
-            }
+        if req.amount > largeAmount {
+            requiredOtp=true;
         }
+        var fee=0d;
+        http:Client cbsClient = check new (cbsUrl);
+        http:Response res = check cbsClient->post(string `/transactions`, req, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
         if res.statusCode == http:CREATED.status.code {
+            var result = check res.getJsonPayload();
+            string refNumber = check result.reference;
+            if requiredOtp {
+                //generate otp
+                http:Client otpClient = check new (otpUrl);
+                http:Response otpRes = check otpClient->post("", {ref: refNumber}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
+                
+                if otpRes.statusCode != http:OK.status.code
+                {
+                    //release block balance when otp generation fail
+                    http:Response delres = check cbsClient->delete(string `/transactions/${refNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
+                    log:printInfo("error log with cause " + delres.statusCode.toString(), id = 845315);
+                    if delres.statusCode != http:OK.status.code{
+                        return {
+                            status: {
+                                code: 1,
+                                errorCode: null,
+                                errorMessage: null
+                            },
+                            data: null
+                        };
+                    }
+                }
+            }
             return {
                 status: {
                     code: 0,
@@ -286,9 +315,13 @@ service / on new http:Listener(9090) {
             };
         }
     }
+
     resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|RespondStatus 'status; ConfirmTransferRes? data;|}|error {
         boolean otpResult = true;
         var requiredOtp =false;
+        if req.hasKey("otpCode") {
+            requiredOtp=true;
+        }
         if requiredOtp {
             http:Client otpClient = check new (otpUrl);
             http:Response res = check otpClient->put("/", {ref: req.initRefNumber, otp: req.otpCode}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
@@ -300,7 +333,7 @@ service / on new http:Listener(9090) {
         if otpResult {
             //call to cbs to get CIF phone number
             http:Client cbsClient = check new (cbsUrl);
-            http:Response res = check cbsClient->put(string `/transactions`, {}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
+            http:Response res = check cbsClient->put(string `/transactions`, {}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
             var result = check res.getJsonPayload();
             if res.statusCode == http:OK.status.code {
                 return {
@@ -351,7 +384,7 @@ service / on new http:Listener(9090) {
                 status: {
                     code: 1,
                     errorCode: null,
-                    errorMessage: "invalid"
+                    errorMessage: null
                 },
                 data: {
                     totalElement: 0,

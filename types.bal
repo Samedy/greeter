@@ -110,9 +110,10 @@ type ConfirmTransferReq record {|
     }
     string initRefNumber;
     @constraint:String {
-        minLength: 1
+        minLength: 6,
+        maxLength: 6
     }
-    string otpCode;
+    string otpCode?;
     @constraint:String {
         minLength: 1
     }

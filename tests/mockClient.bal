@@ -2,6 +2,9 @@ import ballerina/http;
 
 var requireOtp = false;
 var requireChangePhone = false;
+var accNumber = "xxxxxxxxx";
+var wrongAccountNumber = "xxxxxxxxy";
+var noOtpRef = "0kElMrPzHeq5luVSvZaFjrB64kiJWia";
 json decryptToken = {"sub": "user@domain", "exp": 1624585517749, "iat": 1669967382, "Issuer": "Issuer", "auth": ["can_get_balance", "can_top_up"]};
 var accessToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGRvbWFpbiIsIklzc3VlciI6Iklzc3VlciIsImF1dGgiOiJbXCJjYW5fZ2V0X2JhbGFuY2VcIiwgXCJjYW5fdG9wX3VwXCJdIiwiZXhwIjoiMTYyNDU4NTUxNzc0OSIsImlhdCI6MTY2OTk2NzM4Mn0.Ixol_dmUxDJm-BBhEsZ5NFMnPGzE1o8TS2J5ZbJv1VM";
 json linkReq = {"loginType": "USER_PWD", "login": "string", "key": "string", "bakongAccId": "string", "phoneNumber": "string"};
@@ -9,9 +12,10 @@ json invalidLinkReq = {"loginType": "USER_PWD", "login": "string", "key": "inval
 json linkRes = {accessToken: accessToken, requireOtp: false, requireChangePhone: requireChangePhone, last3DigitsPhone: "789"};
 json linkResWithOtp = {accessToken: accessToken, requireOtp: true, requireChangePhone: requireChangePhone, last3DigitsPhone: "789"};
 Customer customer = {phoneNumber: "123 456 789", requireChangePhone: requireChangePhone, requiredOtp: requireOtp};
-json txnRes = {"initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM", "debitAmount": 10.0d, "debitCcy": "USD", "fee": 0, "requireOtp": requireOtp};
+json txnRes = {"initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM", "debitAmount": 10.0d, "debitCcy": "USD", "fee": 0, "requireOtp": false};
+json largeTxnRes = {"initRefNumber": "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM", "debitAmount": 10000.0d, "debitCcy": "USD", "fee": 0, "requireOtp": true};
 Account account = {
-    accNumber: "xxxxxxxxx",
+    accNumber: accNumber,
     accName: "Jonh Smith",
     accPhone: "012345678",
     accType: "SAVINGS",
@@ -74,6 +78,11 @@ service / on otpEP {
         return response;
     }
     resource function post .(@http:Payload record {|string ref;|} req) returns @tainted http:Response|anydata|http:ClientError {
+        if req.ref==noOtpRef{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
         http:Response response = new;
         response.statusCode = 200;
         return response;
@@ -88,18 +97,41 @@ service /cbs on cbsEP {
     resource function get customers/[string cus]/accounts() returns Account[] {
         return [account];
     }
-    resource function get accounts/[string acc]() returns Account {
+    resource function get accounts/[string acc]() returns http:Response|Account|http:ClientError {
+        if acc==wrongAccountNumber{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
         return account;
     }
-    resource function get accounts/[string acc]/transactions(int page, int size) returns Transaction[] {
+    resource function put accounts/[string acc]/status(@http:Payload record {|boolean link;|} req) returns @tainted http:Response|anydata|http:ClientError {
+        if acc==wrongAccountNumber{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
+        http:Response response = new;
+        response.statusCode = 200;
+        return response;
+    }
+    resource function get accounts/[string acc]/transactions(int page, int size) returns http:Response|Transaction[] {
+        if acc==wrongAccountNumber{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
         return txn;
     }
-    resource function post transactions(@http:Payload json req) returns json {
-        // do {
-        //     return {reference: check txnRes.initRefNumber};
-        // } on fail var e {
-
-        // }
+    resource function post transactions(@http:Payload json req) returns http:Response|json {
+        if req.sourceAcc==wrongAccountNumber && req.destinationAcc ==wrongAccountNumber{
+            return {reference: noOtpRef};
+        }
+        if req.sourceAcc==wrongAccountNumber{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
         return {reference: "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM"};
     }
     resource function put transactions(@http:Payload json req) returns record {} {
