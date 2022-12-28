@@ -1,6 +1,6 @@
 openapi: 3.0.1
 info:
-  title: Main Openapi Yaml
+  title: Service Openapi Yaml
   version: 0.1.0
 servers:
 - url: "{server}:{port}/"
@@ -8,11 +8,17 @@ servers:
     server:
       default: http://localhost
     port:
-      default: "8080"
+      default: "9090"
 paths:
   /greeting:
     get:
       operationId: getGreeting
+      parameters:
+      - name: App-Name
+        in: header
+        required: true
+        schema:
+          type: string
       responses:
         "200":
           description: Ok
@@ -36,4 +42,408 @@ paths:
             text/plain:
               schema:
                 type: string
-components: {}
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+  /verify-otp:
+    post:
+      operationId: postVerifyOtp
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OtpRes'
+                  status:
+                    $ref: '#/components/schemas/RespondStatus'
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+  /finish-link-account:
+    post:
+      operationId: postFinishLinkAccount
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FinishLinkAccountRes'
+                  status:
+                    $ref: '#/components/schemas/RespondStatus'
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+  /authenticate:
+    post:
+      operationId: postAuthenticate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthenticationRes'
+                  '''status':
+                    $ref: '#/components/schemas/RespondStatus'
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+  /unlink-account:
+    post:
+      operationId: postUnlinkAccount
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                  '''status':
+                    $ref: '#/components/schemas/RespondStatus'
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+  /account-detail:
+    post:
+      operationId: postAccountDetail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Account'
+                  '''status':
+                    $ref: '#/components/schemas/RespondStatus'
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+  /account-transactions:
+    post:
+      operationId: postAccountTransactions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionReq'
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AccountTransactionsRes'
+                  '''status':
+                    $ref: '#/components/schemas/RespondStatus'
+        "500":
+          description: Found unexpected output
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    InitLinkReq:
+      required:
+      - bakongAccId
+      - key
+      - login
+      - loginType
+      - phoneNumber
+      type: object
+      properties:
+        loginType:
+          type: string
+          enum:
+          - USER_PWD
+          - PHONE_PIN
+        login:
+          type: string
+        key:
+          type: string
+        bakongAccId:
+          type: string
+        phoneNumber:
+          type: string
+    RespondStatus:
+      required:
+      - code
+      - errorCode
+      - errorMessage
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int64
+        errorCode:
+          type: string
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+    OtpRes:
+      required:
+      - isValid
+      type: object
+      properties:
+        isValid:
+          type: boolean
+    AccountReq:
+      required:
+      - accNumber
+      type: object
+      properties:
+        accNumber:
+          type: string
+    FinishLinkAccountRes:
+      required:
+      - requireChangePassword
+      type: object
+      properties:
+        requireChangePassword:
+          type: boolean
+    AuthenticationReq:
+      required:
+      - key
+      - login
+      - loginType
+      type: object
+      properties:
+        login:
+          type: string
+        key:
+          type: string
+        loginType:
+          type: string
+          enum:
+          - USER_PWD
+          - PHONE_PIN
+    AuthenticationRes:
+      required:
+      - accessToken
+      - requireChangePassword
+      type: object
+      properties:
+        requireChangePassword:
+          type: boolean
+        accessToken:
+          type: string
+    Limit:
+      required:
+      - maxTrxAmount
+      - minTrxAmount
+      type: object
+      properties:
+        minTrxAmount:
+          type: number
+          format: double
+        maxTrxAmount:
+          type: number
+          format: double
+    Account:
+      required:
+      - accCcy
+      - accName
+      - accNumber
+      - accPhone
+      - accStatus
+      - accType
+      - balance
+      - country
+      - kycStatus
+      - limit
+      type: object
+      properties:
+        accNumber:
+          type: string
+        accName:
+          type: string
+        accPhone:
+          type: string
+        accType:
+          type: string
+        accCcy:
+          type: string
+        accStatus:
+          type: string
+        kycStatus:
+          type: string
+        country:
+          type: string
+        balance:
+          type: number
+          format: double
+        limit:
+          $ref: '#/components/schemas/Limit'
+    TransferReq:
+      required:
+      - amount
+      - ccy
+      - desc
+      - destinationAcc
+      - sourceAcc
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+        sourceAcc:
+          type: string
+        destinationAcc:
+          type: string
+        amount:
+          type: number
+          format: double
+        ccy:
+          type: string
+        desc:
+          type: string
+    ConfirmTransferReq:
+      required:
+      - initRefNumber
+      - key
+      type: object
+      properties:
+        initRefNumber:
+          type: string
+        otpCode:
+          type: string
+        key:
+          type: string
+    TransactionReq:
+      required:
+      - accNumber
+      - page
+      - size
+      type: object
+      properties:
+        accNumber:
+          type: string
+        page:
+          type: integer
+          format: int64
+        size:
+          type: integer
+          format: int64
+    Transaction:
+      required:
+      - amount
+      - ccy
+      - cdtDbtInd
+      - desc
+      - destinationAcc
+      - sourceAcc
+      - status
+      - transactionDate
+      - transactionHash
+      - transactionId
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+        sourceAcc:
+          type: string
+        destinationAcc:
+          type: string
+        amount:
+          type: number
+          format: double
+        ccy:
+          type: string
+        desc:
+          type: string
+        status:
+          type: string
+        cdtDbtInd:
+          type: string
+        transactionId:
+          type: string
+        transactionDate:
+          type: integer
+          format: int64
+        transactionHash:
+          type: string
+    AccountTransactionsRes:
+      required:
+      - totalElement
+      - transactions
+      type: object
+      properties:
+        totalElement:
+          type: integer
+          format: int64
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'

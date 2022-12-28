@@ -1,4 +1,5 @@
 import ballerina/http;
+import ballerina/log;
 
 var requireOtp = false;
 var requireChangePhone = false;
@@ -68,6 +69,7 @@ service /login on probeEP {
 
 service / on otpEP {
     resource function put .(@http:Payload record {|string ref; int otpCode;|} req) returns @tainted http:Response|anydata|http:ClientError {
+        log:printInfo("otp code " + req.otpCode.toString(), id = 845315);
         if req.otpCode==111{
             http:Response response = new;
             response.statusCode = 400;
@@ -134,14 +136,19 @@ service /cbs on cbsEP {
         }
         return {reference: "0kElMrPzHeq5luVSvZaFjrB64kiJWiaM"};
     }
-    resource function put transactions(@http:Payload json req) returns record {} {
+    resource function put transactions/[string trn]() returns http:Response|record {} {
+        if trn == noOtpRef{
+            http:Response response = new;
+            response.statusCode = 400;
+            return response;
+        }
         return {
             "reference": "xxxxxxxxx",
             "transactionDate": 1624585517749,
             "transactionHash": "xxxxxxxxx"
         };
     }
-    resource function delete transactions(@http:Payload json req) returns record {} {
+    resource function delete transactions/[string trn]() returns record {} {
         return {
             "reference": "xxxxxxxxx",
             "transactionDate": 1624585517749,
@@ -150,43 +157,6 @@ service /cbs on cbsEP {
     }
 }
 
-// public client class MockHttpClient {
-
-//     remote function get(@untainted string path, map<string|string[]>? headers = (), http:TargetType targetType = http:Response) 
-//     returns @tainted http:Response| anydata | http:ClientError {
-//         io:println("get path: "+ path);
-//         log:printInfo("get path: "+ path, id = 845315);
-//         http:Response response = new;
-//         response.statusCode = 500;
-//         response.setPayload(linkRes);
-//         return response;
-//     }
-
-//     remote function post(@untainted string path,http:RequestMessage payload, map<string|string[]>? headers = (), string? mediaType=(), http:TargetType targetType = http:Response) 
-//     returns @tainted http:Response| anydata | http:ClientError {
-//         log:printInfo("post path: "+ path, id = 845315);
-//         http:Response response = new;
-//         response.statusCode = 500;
-//         response.setPayload({
-//                 accessToken: accessToken,
-//                 requireOtp: false,
-//                 requireChangePhone: true,
-//                 last3DigitsPhone: 123
-//             });
-//         return response;
-//     }
-
-//     remote function put(@untainted string path,http:RequestMessage payload, map<string|string[]>? headers = (), string? mediaType=(), http:TargetType targetType = http:Response) 
-//     returns @tainted http:Response| anydata | http:ClientError {
-
-//         http:Response response = new;
-//         response.statusCode = 500;
-//         response.setPayload({
-//                 accessToken: accessToken,
-//                 requireOtp: false,
-//                 requireChangePhone: true,
-//                 last3DigitsPhone: 123
-//             });
-//         return response;
-//     }
-// }
+function validateToken (string origin, string mok) returns boolean{
+    return origin == mok;
+}

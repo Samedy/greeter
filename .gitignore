@@ -5,3 +5,4 @@ libs
 .terraform
 .terraform.lock.hcl
 .vscode
+Dependencies.toml

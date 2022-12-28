@@ -37,7 +37,7 @@ service / on new http:Listener(9090) {
     #
     # + req - Parameter Description
     # + return - Return Value Description
-    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|RespondStatus status; InitLinkRes? data;|}|error? {
+    resource function post 'init\-link\-account(@http:Payload InitLinkReq req) returns record {|RespondStatus status; InitLinkRes data?;|}|error? {
         //_ = check constraint:validate(req,InitLinkReq);
         
         //call to db to store request record
@@ -46,7 +46,7 @@ service / on new http:Listener(9090) {
         boolean requireChangePhone = false;
         //call to external service to validate username and password
         http:Client authClient = check new (authUrl);
-        log:printInfo("service info: "+ req.key, id = 845315);
+        
         http:Response res = check authClient->post("login", {username: req.login, password: req.key}, {Accept: ACCEPT_HEADER, Authorization: "token " + apiMgrToken});
         log:printInfo("auth info: "+ res.statusCode.toString(), id = 845315);
         string phoneNumber = "";
@@ -54,7 +54,7 @@ service / on new http:Listener(9090) {
         //call to cbs to get CIF phone number
         http:Client cbsClient = check new(cbsUrl);
         http:Response cbsRes = check cbsClient->get(string `/customers/${request.login}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-        
+        log:printInfo("service info: "+ check cbsRes.getTextPayload(), id = 845315);
         var cus = check cbsRes.getJsonPayload();
         string phone = check cus.phoneNumber;
         phoneNumber = phone.substring(phone.length()-3);
@@ -256,7 +256,7 @@ service / on new http:Listener(9090) {
         };
     }
 
-    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes? data;|}|error {
+    resource function post 'init\-transaction(@http:Payload TransferReq req) returns record {|RespondStatus 'status; TransferRes data?;|}|error {
         //submit txn to cbs to block balance
         var requiredOtp =false;
         if req.amount > largeAmount {
@@ -277,17 +277,18 @@ service / on new http:Listener(9090) {
                 {
                     //release block balance when otp generation fail
                     http:Response delres = check cbsClient->delete(string `/transactions/${refNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-                    log:printInfo("error log with cause " + delres.statusCode.toString(), id = 845315);
+                    
                     if delres.statusCode != http:OK.status.code{
-                        return {
-                            status: {
-                                code: 1,
-                                errorCode: null,
-                                errorMessage: null
-                            },
-                            data: null
-                        };
+                        //report cannot release txn
                     }
+                    return {
+                        status: {
+                            code: 1,
+                            errorCode: null,
+                            errorMessage: null
+                        },
+                        data: null
+                    };
                 }
             }
             return {
@@ -316,7 +317,8 @@ service / on new http:Listener(9090) {
         }
     }
 
-    resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|RespondStatus 'status; ConfirmTransferRes? data;|}|error {
+    resource function post 'finish\-transaction(@http:Payload ConfirmTransferReq req) returns record {|RespondStatus 'status; ConfirmTransferRes data?;|}|error {
+        //TODO: verify pin key
         boolean otpResult = true;
         var requiredOtp =false;
         if req.hasKey("otpCode") {
@@ -324,18 +326,17 @@ service / on new http:Listener(9090) {
         }
         if requiredOtp {
             http:Client otpClient = check new (otpUrl);
-            http:Response res = check otpClient->put("/", {ref: req.initRefNumber, otp: req.otpCode}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
-            if res.statusCode != http:CREATED.status.code {
+            http:Response res = check otpClient->put("", {ref: req.initRefNumber, otpCode: check int:fromString(req.otpCode ?: "")}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + OtpToken});
+            if res.statusCode != http:OK.status.code {
                 otpResult = false;
             }
         }
         //submit txn to cbs to complete the txn
         if otpResult {
-            //call to cbs to get CIF phone number
             http:Client cbsClient = check new (cbsUrl);
-            http:Response res = check cbsClient->put(string `/transactions`, {}, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
-            var result = check res.getJsonPayload();
+            http:Response res = check cbsClient->put(string `/transactions/${req.initRefNumber}`, {Accept: ACCEPT_HEADER, Authorization: "Bearer " + cbsToken});
             if res.statusCode == http:OK.status.code {
+                var result = check res.getJsonPayload();
                 return {
                     status: {
                         code: 0,
@@ -359,6 +360,7 @@ service / on new http:Listener(9090) {
             data: null
         };
     }
+    
     resource function post 'account\-transactions(@http:Payload TransactionReq req) returns record {|RespondStatus 'status; AccountTransactionsRes data;|}|error {
         
         //call to cbs to get txn record

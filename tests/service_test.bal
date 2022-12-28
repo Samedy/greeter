@@ -73,11 +73,10 @@ function postInitLinkAccountWithOtp() returns error? {
 
 @test:Config {}
 function postInitLinkAccountWithInvalidPassword() returns error? {
-    http:Response response = check testClient->post("init-link-account",invalidLinkReq);
+    http:Response response = check testClient->post("init-link-account",invalidLinkReq,headers = {"Authorization": "Bearer "+accessToken});
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
-            status: {code: 1,errorCode: null,errorMessage: null},
-            data:null
+            status: {code: 1,errorCode: null,errorMessage: null}
         });
 }
 
@@ -221,8 +220,7 @@ function postInitTransactionLargeAmountCannotGenerateOtp() returns error? {
     test:assertEquals(response.getJsonPayload(), {
         status: {
             "code": 1,"errorCode": null,"errorMessage": null
-        },
-        data:null
+        }
     });
 }
 
@@ -234,8 +232,7 @@ function postInitInvalidTransaction() returns error? {
     test:assertEquals(response.getJsonPayload(), {
         status: {
             "code": 1,"errorCode": null,"errorMessage": null
-        },
-        data:null
+        }
     });
 }
 
@@ -260,7 +257,7 @@ function postFinishTransaction() returns error? {
 
 @test:Config {}
 function postFinishInvalidTransaction() returns error? {
-    json req = {"initRefNumber": "string","key": "string"};
+    json req = {"initRefNumber": noOtpRef,"key": "string"};
     http:Response response = check testClient->post("finish-transaction",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
@@ -268,14 +265,13 @@ function postFinishInvalidTransaction() returns error? {
                 "code": 1,
                 "errorCode": null,
                 "errorMessage": null
-            },
-            data:null
+            }
         });
 }
 
 @test:Config {}
 function postFinishLargeTransaction() returns error? {
-    json req = {"initRefNumber": "string","key": "string"};
+    json req = {"initRefNumber": "string","otpCode": "123456","key": "string"};
     http:Response response = check testClient->post("finish-transaction",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
@@ -294,7 +290,7 @@ function postFinishLargeTransaction() returns error? {
 
 @test:Config {}
 function postFinishInvalidLargeTransaction() returns error? {
-    json req = {"initRefNumber": "string","otpCode": "string","key": "string"};
+    json req = {"initRefNumber": noOtpRef,"otpCode": "123456","key": "string"};
     http:Response response = check testClient->post("finish-transaction",req);
     test:assertEquals(response.statusCode, 201);
     test:assertEquals(response.getJsonPayload(), {
@@ -302,8 +298,7 @@ function postFinishInvalidLargeTransaction() returns error? {
                 "code": 1,
                 "errorCode": null,
                 "errorMessage": null
-            },
-            data:null
+            }
         });
 }
 

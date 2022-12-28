@@ -15,7 +15,7 @@ observabilityIncluded = true
 [[platform.java11.dependency]]
 groupId = "org.postgresql"
 artifactId = "postgresql"
-version = "42.2.20"
+version = "42.5.1"
 
 [ballerina.log]
 level = "DEBUG"
